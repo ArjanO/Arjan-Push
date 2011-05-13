@@ -41,5 +41,5 @@
 * Consult LICENSE file for details
 ************************************************/
 
-define("ZPUSH_VERSION", "SVN checkout");
+define("ZPUSH_VERSION", "z-push-2.0alpha1-639");
 ?>
