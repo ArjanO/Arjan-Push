@@ -601,39 +601,41 @@ class Sync extends RequestProcessor {
                             //make sure the states are loaded
                             $status = $this->loadStates($sc, $spa, $actiondata);
 
-                            try {
-                                // Use the state from the importer, as changes may have already happened
-                                $exporter = self::$backend->GetExporter($spa->GetFolderId());
+                            if($status == SYNC_STATUS_SUCCESS) {
+                                try {
+                                    // Use the state from the importer, as changes may have already happened
+                                    $exporter = self::$backend->GetExporter($spa->GetFolderId());
 
-                                if ($exporter === false)
-                                    throw new StatusException(sprintf("HandleSync() could not get an exporter for folder id '%s'", $spa->GetFolderId()), SYNC_STATUS_FOLDERHIERARCHYCHANGED);
-                            }
-                            catch (StatusException $stex) {
-                               $status = $stex->getCode();
-                            }
-                            try {
-                                // Stream the messages directly to the PDA
-                                $streamimporter = new ImportChangesStream(self::$encoder, ZPush::getSyncObjectFromFolderClass($spa->GetContentClass()));
-
-                                if ($exporter !== false) {
-                                    $exporter->Config($sc->GetParameter($spa, "state"));
-                                    $exporter->ConfigContentParameters($spa->GetCPO());
-                                    $exporter->InitializeExporter($streamimporter);
-
-                                    $changecount = $exporter->GetChangeCount();
+                                    if ($exporter === false)
+                                        throw new StatusException(sprintf("HandleSync() could not get an exporter for folder id '%s'", $spa->GetFolderId()), SYNC_STATUS_FOLDERHIERARCHYCHANGED);
                                 }
-                            }
-                            catch (StatusException $stex) {
-                                if ($stex->getCode() === SYNC_FSSTATUS_CODEUNKNOWN && $spa->HasSyncKey())
-                                    $status = SYNC_STATUS_INVALIDSYNCKEY;
-                                else
-                                    $status = $stex->getCode();
-                            }
+                                catch (StatusException $stex) {
+                                   $status = $stex->getCode();
+                                }
+                                try {
+                                    // Stream the messages directly to the PDA
+                                    $streamimporter = new ImportChangesStream(self::$encoder, ZPush::getSyncObjectFromFolderClass($spa->GetContentClass()));
 
-                            if (! $spa->HasSyncKey())
-                                self::$topCollector->AnnounceInformation(sprintf("Exporter registered. %d objects queued.", $changecount), true);
-                            else if ($status != SYNC_STATUS_SUCCESS)
-                                self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
+                                    if ($exporter !== false) {
+                                        $exporter->Config($sc->GetParameter($spa, "state"));
+                                        $exporter->ConfigContentParameters($spa->GetCPO());
+                                        $exporter->InitializeExporter($streamimporter);
+
+                                        $changecount = $exporter->GetChangeCount();
+                                    }
+                                }
+                                catch (StatusException $stex) {
+                                    if ($stex->getCode() === SYNC_FSSTATUS_CODEUNKNOWN && $spa->HasSyncKey())
+                                        $status = SYNC_STATUS_INVALIDSYNCKEY;
+                                    else
+                                        $status = $stex->getCode();
+                                }
+
+                                if (! $spa->HasSyncKey())
+                                    self::$topCollector->AnnounceInformation(sprintf("Exporter registered. %d objects queued.", $changecount), true);
+                                else if ($status != SYNC_STATUS_SUCCESS)
+                                    self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
+                            }
                         }
 
                         if (! $sc->GetParameter($spa, "requested") && $spa->HasSyncKey() && $changecount == 0)
