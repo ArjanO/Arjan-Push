@@ -162,6 +162,10 @@ class BackendZarafa implements IBackend, ISearchProvider {
                 $this->session = @mapi_logon_zarafa($user, $pass, MAPI_SERVER);
                 $this->notifications = false;
             }
+
+            if (mapi_last_hresult())
+                ZLog::Write(LOGLEVEL_ERROR, sprintf("ZarafaBackend->Logon(): login failed with error code: 0x%X", mapi_last_hresult()));
+
         }
         catch (MAPIException $ex) {
             throw new AuthenticationRequiredException($ex->getDisplayMessage());
