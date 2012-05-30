@@ -769,12 +769,13 @@ class MAPIProvider {
            !isset($folderprops[PR_ENTRYID]) ||
            !isset($folderprops[PR_PARENT_SOURCE_KEY]) ||
            !isset($storeprops[PR_IPM_SUBTREE_ENTRYID])) {
-            ZLog::Write(LOGLEVEL_ERROR, "Missing properties on folder");
+            ZLog::Write(LOGLEVEL_ERROR, "MAPIProvider->GetFolder(): invalid folder. Missing properties");
             return false;
         }
 
         // ignore hidden folders
         if (isset($folderprops[PR_ATTR_HIDDEN]) && $folderprops[PR_ATTR_HIDDEN] != false) {
+            ZLog::Write(LOGLEVEL_DEBUG, sprintf("MAPIProvider->GetFolder(): invalid folder '%s' as it is a hidden folder (PR_ATTR_HIDDEN)", $folderprops[PR_DISPLAY_NAME]));
             return false;
         }
 
