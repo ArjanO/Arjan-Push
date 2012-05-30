@@ -254,7 +254,7 @@ class LoopDetection extends InterProcessData {
     public function ProcessLoopDetectionPreviousConnectionFailed() {
         $stack = $this->getProcessStack();
         if (count($stack) > 1) {
-            $se = $stack[count($stack)-2];
+            $se = $stack[0];
             if (!isset($se['end']) && $se['cc'] != ZPush::COMMAND_PING) {
                 // there is no end time
                 ZLog::Write(LOGLEVEL_ERROR, sprintf("LoopDetection->ProcessLoopDetectionPreviousConnectionFailed() the last request of this user, " .
