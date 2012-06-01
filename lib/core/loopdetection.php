@@ -459,6 +459,53 @@ class LoopDetection extends InterProcessData {
     }
 
     /**
+     * Checks if the given counter for a certain uuid+folderid was exported before.
+     * Returns also true if the counter are the same but previously there were
+     * changes to be exported.
+     *
+     * @param string $folderid          folder id
+     * @param string $uuid              synkkey
+     * @param string $counter           synckey counter
+     *
+     * @access public
+     * @return boolean                  indicating if an uuid+counter were exported (with changes) before
+     */
+    public function IsSyncStateObsolete($folderid, $uuid, $counter) {
+        // initialize params
+        $this->InitializeParams();
+
+        $obsolete = false;
+
+        // exclusive block
+        if ($this->blockMutex()) {
+            $loopdata = ($this->hasData()) ? $this->getData() : array();
+            $this->releaseMutex();
+            // end exclusive block
+
+            // check and initialize the array structure
+            $this->checkArrayStructure($loopdata, $folderid);
+
+            $current = $loopdata[self::$devid][self::$user][$folderid];
+
+            if (!empty($current)) {
+                if ($current["uuid"] != $uuid) {
+                    ZLog::Write(LOGLEVEL_DEBUG, "LoopDetection->IsSyncStateObsolete(): yes, uuid changed");
+                    $obsolete = true;
+                }
+                ZLog::Write(LOGLEVEL_DEBUG, sprintf("LoopDetection->IsSyncStateObsolete(): check uuid counter: %d - last known counter: %d with %d queued objects", $counter, $current["count"], $current["queued"]));
+
+                if ($current["uuid"] == $uuid && ($current["count"] > $counter || ($current["count"] == $counter && $current["queued"] > 0))) {
+                    ZLog::Write(LOGLEVEL_DEBUG, "LoopDetection->IsSyncStateObsolete(): yes, counter already processed");
+                    $obsolete = true;
+                }
+            }
+
+        }
+
+        return $obsolete;
+    }
+
+    /**
      * MESSAGE LOOP DETECTION
      */
 
