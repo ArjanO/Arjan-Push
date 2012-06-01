@@ -535,41 +535,51 @@ class Sync extends RequestProcessor {
             if (isset($hbinterval))
                 $sc->SetLifetime($hbinterval);
 
-            $foundchanges = false;
+            // states are lazy loaded - we have to make sure that they are there!
+            foreach($sc as $folderid => $spa) {
+                $fad = array();
+                // if loading the states fails, we do not enter heartbeat, but we keep $status on SYNC_STATUS_SUCCESS
+                // so when the changes are exported the correct folder gets an SYNC_STATUS_INVALIDSYNCKEY
+                $loadstatus = $this->loadStates($sc, $spa, $fad);
+            }
 
-            // wait for changes
-            try {
-                // if doing an empty sync, check only once for changes
-                if ($emtpysync) {
-                    $foundchanges = $sc->CountChanges();
-                }
+            if ($loadstatus = SYNC_STATUS_SUCCESS) {
+                $foundchanges = false;
+
                 // wait for changes
-                else {
-                    ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): Entering Heartbeat mode"));
-                    $foundchanges = $sc->CheckForChanges($sc->GetLifetime(), $interval);
-                }
-            }
-            catch (StatusException $stex) {
-               $status = SYNC_STATUS_FOLDERHIERARCHYCHANGED;
-               self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
-            }
-
-            // in case of an empty sync with no changes, we can reply with an empty response
-            if ($emtpysync && !$foundchanges){
-                ZLog::Write(LOGLEVEL_DEBUG, "No changes found for empty sync. Replying with empty response");
-                return true;
-            }
-
-            if ($foundchanges) {
-                foreach ($sc->GetChangedFolderIds() as $folderid => $changecount) {
-                    // check if there were other sync requests for a folder during the heartbeat
-                    $spa = $sc->GetCollection($folderid);
-                    if ($changecount > 0 && self::$deviceManager->CheckHearbeatStateIntegrity($spa->GetFolderId(), $spa->GetUuid(), $spa->GetUuidCounter())) {
-                        ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s' which was already synchronized. Heartbeat aborted!", $changecount, $folderid));
-                        $status = SYNC_COMMONSTATUS_SYNCSTATEVERSIONINVALID;
+                try {
+                    // if doing an empty sync, check only once for changes
+                    if ($emtpysync) {
+                        $foundchanges = $sc->CountChanges();
                     }
-                    else
-                        ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s'", $changecount, $folderid));
+                    // wait for changes
+                    else {
+                        ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): Entering Heartbeat mode"));
+                        $foundchanges = $sc->CheckForChanges($sc->GetLifetime(), $interval);
+                    }
+                }
+                catch (StatusException $stex) {
+                   $status = SYNC_STATUS_FOLDERHIERARCHYCHANGED;
+                   self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
+                }
+
+                // in case of an empty sync with no changes, we can reply with an empty response
+                if ($emtpysync && !$foundchanges){
+                    ZLog::Write(LOGLEVEL_DEBUG, "No changes found for empty sync. Replying with empty response");
+                    return true;
+                }
+
+                if ($foundchanges) {
+                    foreach ($sc->GetChangedFolderIds() as $folderid => $changecount) {
+                        // check if there were other sync requests for a folder during the heartbeat
+                        $spa = $sc->GetCollection($folderid);
+                        if ($changecount > 0 && self::$deviceManager->CheckHearbeatStateIntegrity($spa->GetFolderId(), $spa->GetUuid(), $spa->GetUuidCounter())) {
+                            ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s' which was already synchronized. Heartbeat aborted!", $changecount, $folderid));
+                            $status = SYNC_COMMONSTATUS_SYNCSTATEVERSIONINVALID;
+                        }
+                        else
+                            ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s'", $changecount, $folderid));
+                    }
                 }
             }
         }
@@ -650,8 +660,8 @@ class Sync extends RequestProcessor {
                             }
                         }
 
-                        if (isset($hbinterval) && $changecount == 0) {
-                            ZLog::Write(LOGLEVEL_DEBUG, "No changes found for heardbeat folder. Omitting empty output.");
+                        if (isset($hbinterval) && $changecount == 0 && $status == SYNC_STATUS_SUCCESS) {
+                            ZLog::Write(LOGLEVEL_DEBUG, "No changes found for heartbeat folder. Omitting empty output.");
                             continue;
                         }
 
@@ -888,7 +898,7 @@ class Sync extends RequestProcessor {
         $status = SYNC_STATUS_SUCCESS;
 
         if ($sc->GetParameter($spa, "state") == null) {
-            ZLog::Write(LOGLEVEL_DEBUG, "Sync->loadStates(): loading states");
+            ZLog::Write(LOGLEVEL_DEBUG, sprintf("Sync->loadStates(): loading states for folder '%s'",$spa->GetFolderId()));
 
             try {
                 $sc->AddParameter($spa, "state", self::$deviceManager->GetStateManager()->GetSyncState($spa->GetSyncKey()));
