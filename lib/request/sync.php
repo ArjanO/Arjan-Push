@@ -562,7 +562,14 @@ class Sync extends RequestProcessor {
 
             if ($foundchanges) {
                 foreach ($sc->GetChangedFolderIds() as $folderid => $changecount) {
-                    ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s'", $changecount, $folderid));
+                    // check if there were other sync requests for a folder during the heartbeat
+                    $spa = $sc->GetCollection($folderid);
+                    if ($changecount > 0 && self::$deviceManager->CheckHearbeatStateIntegrity($spa->GetFolderId(), $spa->GetUuid(), $spa->GetUuidCounter())) {
+                        ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s' which was already synchronized. Heartbeat aborted!", $changecount, $folderid));
+                        $status = SYNC_COMMONSTATUS_SYNCSTATEVERSIONINVALID;
+                    }
+                    else
+                        ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): heartbeat: found %d changes in '%s'", $changecount, $folderid));
                 }
             }
         }
