@@ -587,6 +587,11 @@ class Sync extends RequestProcessor {
                         // get actiondata
                         $actiondata = $sc->GetParameter($spa, "actiondata");
 
+                        if ($status == SYNC_STATUS_SUCCESS && (!$spa->GetContentClass() || !$spa->GetFolderId())) {
+                            ZLog::Write(LOGLEVEL_ERROR, sprintf("HandleSync(): no content class or folderid found for collection."));
+                            continue;
+                        }
+
                         if (! $sc->GetParameter($spa, "requested"))
                             ZLog::Write(LOGLEVEL_DEBUG, sprintf("HandleSync(): partial sync for folder class '%s' with id '%s'", $spa->GetContentClass(), $spa->GetFolderId()));
 
@@ -638,8 +643,10 @@ class Sync extends RequestProcessor {
                             }
                         }
 
-                        if (! $sc->GetParameter($spa, "requested") && $spa->HasSyncKey() && $changecount == 0)
+                        if (isset($hbinterval) && $changecount == 0) {
+                            ZLog::Write(LOGLEVEL_DEBUG, "No changes found for heardbeat folder. Omitting empty output.");
                             continue;
+                        }
 
                         // Get a new sync key to output to the client if any changes have been send or will are available
                         if (!empty($actiondata["modifyids"]) ||
