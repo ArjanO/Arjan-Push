@@ -48,6 +48,7 @@ ob_start(null, 1048576);
 include_once('lib/exceptions/exceptions.php');
 include_once('lib/utils/utils.php');
 include_once('lib/utils/compat.php');
+include_once('lib/utils/timezoneutil.php');
 include_once('lib/core/zpushdefs.php');
 include_once('lib/core/stateobject.php');
 include_once('lib/core/interprocessdata.php');
