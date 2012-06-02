@@ -156,6 +156,9 @@ class TimezoneUtil {
      * 17 = wEndSecond
      * 18 = wEndMilloseconds
      *
+     * As the $tzoneoffsets and the $mstzones need to be resolved in both directions,
+     * some offsets are commented as they are not available in the $mstzones.
+     *
      * Created at: 01.06.2012
      */
     private static $tzonesoffsets = array(
@@ -165,20 +168,20 @@ class TimezoneUtil {
                         "Arab Standard Time"                        => array(-180, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Arabian Standard Time"                     => array(-240, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Arabic Standard Time"                      => array(-180, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Argentina Standard Time"                   => array(180, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Argentina Standard Time"                   => array(180, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Atlantic Standard Time"                    => array(240, 0, -60,  0, 11, 0, 1, 2, 0, 0, 0,  0, 3, 0, 2, 2, 0, 0, 0),
                         "AUS Central Standard Time"                 => array(-570, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "AUS Eastern Standard Time"                 => array(-600, 0, -60,  0, 4, 0, 1, 3, 0, 0, 0,  0, 10, 0, 1, 2, 0, 0, 0),
-                        "Azerbaijan Standard Time"                  => array(-240, 0, -60,  0, 10, 0, 5, 5, 0, 0, 0,  0, 3, 0, 5, 4, 0, 0, 0),
+                        //"Azerbaijan Standard Time"                  => array(-240, 0, -60,  0, 10, 0, 5, 5, 0, 0, 0,  0, 3, 0, 5, 4, 0, 0, 0),
                         "Azores Standard Time"                      => array(60, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
-                        "Bangladesh Standard Time"                  => array(-360, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Bangladesh Standard Time"                  => array(-360, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Canada Central Standard Time"              => array(360, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Cape Verde Standard Time"                  => array(60, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Caucasus Standard Time"                    => array(-240, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Cen Australia Standard Time"               => array(-570, 0, -60,  0, 4, 0, 1, 3, 0, 0, 0,  0, 10, 0, 1, 2, 0, 0, 0),
                         "Central America Standard Time"             => array(360, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Central Asia Standard Time"                => array(-360, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Central Brazilian Standard Time"           => array(240, 0, -60,  0, 2, 6, 4, 23, 59, 59, 999,  0, 10, 6, 3, 23, 59, 59, 999),
+                        //"Central Brazilian Standard Time"           => array(240, 0, -60,  0, 2, 6, 4, 23, 59, 59, 999,  0, 10, 6, 3, 23, 59, 59, 999),
                         "Central Europe Standard Time"              => array(-60, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Central European Standard Time"            => array(-60, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Central Pacific Standard Time"             => array(-660, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
@@ -195,7 +198,7 @@ class TimezoneUtil {
                         "Ekaterinburg Standard Time"                => array(-300, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Fiji Islands Standard Time"                => array(-720, 0, -60,  0, 3, 0, 5, 3, 0, 0, 0,  0, 10, 0, 4, 2, 0, 0, 0),
                         "FLE Standard Time"                         => array(-120, 0, -60,  0, 10, 0, 5, 4, 0, 0, 0,  0, 3, 0, 5, 3, 0, 0, 0),
-                        "Georgian Standard Time"                    => array(-240, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Georgian Standard Time"                    => array(-240, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "GMT Standard Time"                         => array(0, 0, -60,  0, 10, 0, 5, 2, 0, 0, 0,  0, 3, 0, 5, 1, 0, 0, 0),
                         "Greenland Standard Time"                   => array(180, 0, -60,  0, 10, 6, 5, 23, 0, 0, 0,  0, 3, 6, 4, 22, 0, 0, 0),
                         "Greenwich Standard Time"                   => array(0, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
@@ -204,20 +207,20 @@ class TimezoneUtil {
                         "India Standard Time"                       => array(-330, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Iran Standard Time"                        => array(-210, 0, -60,  0, 9, 1, 3, 23, 59, 59, 999,  0, 3, 6, 3, 23, 59, 59, 999),
                         "Israel Standard Time"                      => array(-120, 0, -60,  0, 9, 0, 4, 2, 0, 0, 0,  0, 3, 5, 5, 2, 0, 0, 0),
-                        "Jordan Standard Time"                      => array(-120, 0, -60,  0, 10, 5, 5, 1, 0, 0, 0,  0, 3, 4, 5, 23, 59, 59, 999),
-                        "Kamchatka Standard Time"                   => array(-720, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
+                        //"Jordan Standard Time"                      => array(-120, 0, -60,  0, 10, 5, 5, 1, 0, 0, 0,  0, 3, 4, 5, 23, 59, 59, 999),
+                        //"Kamchatka Standard Time"                   => array(-720, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Korea Standard Time"                       => array(-540, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Magadan Standard Time"                     => array(-660, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
-                        "Mauritius Standard Time"                   => array(-240, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Magadan Standard Time"                     => array(-660, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
+                        //"Mauritius Standard Time"                   => array(-240, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Mid-Atlantic Standard Time"                => array(120, 0, -60,  0, 9, 0, 5, 2, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
-                        "Middle East Standard Time"                 => array(-120, 0, -60,  0, 10, 6, 5, 23, 59, 59, 999,  0, 3, 6, 4, 23, 59, 59, 999),
-                        "Montevideo Standard Time"                  => array(180, 0, -60,  0, 3, 0, 2, 2, 0, 0, 0,  0, 10, 0, 1, 2, 0, 0, 0),
-                        "Morocco Standard Time"                     => array(0, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Middle East Standard Time"                 => array(-120, 0, -60,  0, 10, 6, 5, 23, 59, 59, 999,  0, 3, 6, 4, 23, 59, 59, 999),
+                        //"Montevideo Standard Time"                  => array(180, 0, -60,  0, 3, 0, 2, 2, 0, 0, 0,  0, 10, 0, 1, 2, 0, 0, 0),
+                        //"Morocco Standard Time"                     => array(0, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Mountain Standard Time"                    => array(420, 0, -60,  0, 11, 0, 1, 2, 0, 0, 0,  0, 3, 0, 2, 2, 0, 0, 0),
                         "Mexico Standard Time 2"                    => array(420, 0, -60,  0, 10, 0, 5, 2, 0, 0, 0,  0, 4, 0, 1, 2, 0, 0, 0),
                         "Myanmar Standard Time"                     => array(-390, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "N Central Asia Standard Time"              => array(-360, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
-                        "Namibia Standard Time"                     => array(-60, 0, -60,  0, 4, 0, 1, 2, 0, 0, 0,  0, 9, 0, 1, 2, 0, 0, 0),
+                        //"Namibia Standard Time"                     => array(-60, 0, -60,  0, 4, 0, 1, 2, 0, 0, 0,  0, 9, 0, 1, 2, 0, 0, 0),
                         "Nepal Standard Time"                       => array(-345, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "New Zealand Standard Time"                 => array(-720, 0, -60,  0, 4, 0, 1, 3, 0, 0, 0,  0, 9, 0, 5, 2, 0, 0, 0),
                         "Newfoundland and Labrador Standard Time"   => array(210, 0, -60,  0, 11, 0, 1, 0, 1, 0, 0,  0, 3, 0, 2, 0, 1, 0, 0),
@@ -225,9 +228,9 @@ class TimezoneUtil {
                         "North Asia Standard Time"                  => array(-420, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Pacific SA Standard Time"                  => array(240, 0, -60,  0, 3, 6, 2, 23, 59, 59, 999,  0, 10, 6, 2, 23, 59, 59, 999),
                         "Pacific Standard Time"                     => array(480, 0, -60,  0, 11, 0, 1, 2, 0, 0, 0,  0, 3, 0, 2, 2, 0, 0, 0),
-                        "Pacific Standard Time (Mexico)"            => array(480, 0, -60,  0, 10, 0, 5, 2, 0, 0, 0,  0, 4, 0, 1, 2, 0, 0, 0),
-                        "Pakistan Standard Time"                    => array(-300, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Paraguay Standard Time"                    => array(240, 0, -60,  0, 4, 6, 1, 23, 59, 59, 999,  0, 10, 6, 1, 23, 59, 59, 999),
+                        //"Pacific Standard Time (Mexico)"            => array(480, 0, -60,  0, 10, 0, 5, 2, 0, 0, 0,  0, 4, 0, 1, 2, 0, 0, 0),
+                        //"Pakistan Standard Time"                    => array(-300, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Paraguay Standard Time"                    => array(240, 0, -60,  0, 4, 6, 1, 23, 59, 59, 999,  0, 10, 6, 1, 23, 59, 59, 999),
                         "Romance Standard Time"                     => array(-60, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "Russian Standard Time"                     => array(-180, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "SA Eastern Standard Time"                  => array(180, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
@@ -238,18 +241,18 @@ class TimezoneUtil {
                         "Singapore Standard Time"                   => array(-480, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "South Africa Standard Time"                => array(-120, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Sri Lanka Standard Time"                   => array(-330, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Syria Standard Time"                       => array(-120, 0, -60,  0, 10, 4, 5, 23, 59, 59, 999,  0, 4, 4, 1, 23, 59, 59, 999),
+                        //"Syria Standard Time"                       => array(-120, 0, -60,  0, 10, 4, 5, 23, 59, 59, 999,  0, 4, 4, 1, 23, 59, 59, 999),
                         "Taipei Standard Time"                      => array(-480, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Tasmania Standard Time"                    => array(-600, 0, -60,  0, 4, 0, 1, 3, 0, 0, 0,  0, 10, 0, 1, 2, 0, 0, 0),
                         "Tokyo Standard Time"                       => array(-540, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Tonga Standard Time"                       => array(-780, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "Ulaanbaatar Standard Time"                 => array(-480, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"Ulaanbaatar Standard Time"                 => array(-480, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "US Eastern Standard Time"                  => array(300, 0, -60,  0, 11, 0, 1, 2, 0, 0, 0,  0, 3, 0, 2, 2, 0, 0, 0),
                         "US Mountain Standard Time"                 => array(420, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "UTC"                                       => array(0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "UTC+12"                                    => array(-720, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "UTC-02"                                    => array(120, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
-                        "UTC-11"                                    => array(660, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"UTC"                                       => array(0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"UTC+12"                                    => array(-720, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"UTC-02"                                    => array(120, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
+                        //"UTC-11"                                    => array(660, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Venezuela Standard Time"                   => array(270, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
                         "Vladivostok Standard Time"                 => array(-600, 0, -60,  0, 10, 0, 5, 3, 0, 0, 0,  0, 3, 0, 5, 2, 0, 0, 0),
                         "W Australia Standard Time"                 => array(-480, 0, -60,  0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0),
@@ -1227,6 +1230,32 @@ class TimezoneUtil {
      */
     static private function encodeTZName($name) {
         return substr(iconv('UTF-8', 'UTF-16', $name),2,-1);
+    }
+
+    /**
+     * Test to check if $mstzones and $tzonesoffsets can be resolved
+     * in both directions.
+     *
+     * @access public
+     * @return
+     */
+    static public function TZtest() {
+        foreach (self::$mstzones as $mskey => $msdefs) {
+            if (!array_key_exists($msdefs[0], self::$tzonesoffsets))
+                echo "key   '". $msdefs[0]. "'   not found in tzonesoffsets\n";
+        }
+
+        foreach (self::$tzonesoffsets as $tzname => $offset) {
+            $found = false;
+            foreach (self::$mstzones as $mskey => $msdefs) {
+                if ($tzname == $msdefs[0]) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found)
+                echo "key    '$tzname' NOT FOUND\n";
+        }
     }
 
 }
