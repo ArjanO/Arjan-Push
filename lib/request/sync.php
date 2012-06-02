@@ -812,14 +812,14 @@ class Sync extends RequestProcessor {
                             while(1) {
                                 try {
                                     $progress = $exporter->Synchronize();
+                                    $n++;
                                     if(!is_array($progress))
                                         break;
-                                    $n++;
                                 }
                                 catch (SyncObjectBrokenException $mbe) {
                                     $brokenSO = $mbe->GetSyncObject();
                                     if (!$brokenSO) {
-                                        ZLog::Write(LOGLEVEL_ERROR, sprintf("HandleSync(): Catched SyncObjectBrokenException but broken SyncObject available. This should be fixed in the backend."));
+                                        ZLog::Write(LOGLEVEL_ERROR, sprintf("HandleSync(): Catched SyncObjectBrokenException but broken SyncObject not available. This should be fixed in the backend."));
                                     }
                                     else {
                                         if (!isset($brokenSO->id)) {
