@@ -479,7 +479,7 @@ class SyncCollections implements Iterator {
             if ($changesSink) {
                 // in some occasions we do realize a full export to see if there are pending changes
                 // every 5 minutes this is also done to see if there were "missed" notifications
-                if ($forceRealExport+300 <= $now) {
+                if (SINK_FORCERECHECK !== false && $forceRealExport+SINK_FORCERECHECK <= $now) {
                     if ($this->CountChanges($onlyPingable)) {
                         ZLog::Write(LOGLEVEL_DEBUG, "SyncCollections->CheckForChanges(): Using ChangesSink but found relevant changes on regular export");
                         return true;
@@ -562,6 +562,7 @@ class SyncCollections implements Iterator {
             $exporter = ZPush::GetBackend()->GetExporter($folderid);
             if ($exporter !== false && isset($this->addparms[$folderid]["state"])) {
                 $importer = false;
+
                 $exporter->Config($this->addparms[$folderid]["state"], BACKEND_DISCARD_DATA);
                 $exporter->ConfigContentParameters($spa->GetCPO());
                 $ret = $exporter->InitializeExporter($importer);

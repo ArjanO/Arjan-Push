@@ -113,6 +113,10 @@
     // a higher value if you have a high load on the server.
     define('PING_INTERVAL', 30);
 
+    // Interval in seconds to force a re-check of potentially missed notifications when
+    // using a changes sink. Default are 300 seconds (every 5 min).
+    // This can also be disabled by setting it to false
+    define('SINK_FORCERECHECK', 60);
 
 /**********************************************************************************
  *  Backend settings
