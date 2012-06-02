@@ -228,24 +228,18 @@ class MAPIProvider {
             $message->organizername = w2u($messageprops[$appointmentprops["representingname"]]);
         }
 
-        // Only set timezone if the timezone tag is set which is usually for recurring appointments only.
-        // For non-recurring appointments it doesn't matter anyway
-        if(isset($messageprops[$appointmentprops["timezonetag"]])) {
-            $message->timezone = base64_encode($this->getSyncBlobFromTZ($this->getTZFromMAPIBlob($messageprops[$appointmentprops["timezonetag"]])));
+        if(isset($messageprops[$appointmentprops["timezonetag"]]))
+            $tz = $this->getTZFromMAPIBlob($messageprops[$appointmentprops["timezonetag"]]);
+        else {
+            // set server default timezone (correct timezone should be configured!)
+            $tz = TimezoneUtil::GetFullTZ();
         }
+        $message->timezone = base64_encode($this->getSyncBlobFromTZ($tz));
+
         if(isset($messageprops[$appointmentprops["isrecurring"]]) && $messageprops[$appointmentprops["isrecurring"]]) {
-            if (isset($messageprops[$appointmentprops["timezonetag"]])) {
-                // Process recurrence
-                $message->recurrence = new SyncRecurrence();
-                $tz = $this->getTZFromMAPIBlob($messageprops[$appointmentprops["timezonetag"]]);
-                $this->getRecurrence($mapimessage, $messageprops, $message, $message->recurrence, $tz);
-            }
-            else {
-                $message->id = bin2hex($messageprops[$appointmentprops["sourcekey"]]);
-                $mbe = new SyncObjectBrokenException("Recurring appointment does not have a timezone");
-                $mbe->SetSyncObject($message);
-                throw $mbe;
-            }
+            // Process recurrence
+            $message->recurrence = new SyncRecurrence();
+            $this->getRecurrence($mapimessage, $messageprops, $message, $message->recurrence, $tz);
         }
 
         // Do attendees
@@ -1607,8 +1601,30 @@ class MAPIProvider {
      * @return array
      */
     private function getGMTTZ() {
-        $tz = array("bias" => 0, "stdbias" => 0, "dstbias" => 0, "dstendyear" => 0, "dstendmonth" =>0, "dstendday" =>0, "dstendweek" => 0, "dstendhour" => 0, "dstendminute" => 0, "dstendsecond" => 0, "dstendmillis" => 0,
-                                      "dststartyear" => 0, "dststartmonth" =>0, "dststartday" =>0, "dststartweek" => 0, "dststarthour" => 0, "dststartminute" => 0, "dststartsecond" => 0, "dststartmillis" => 0);
+        $tz = array(
+            "bias" => 0,
+            "tzname" => "",
+            "dstendyear" => 0,
+            "dstendmonth" => 10,
+            "dstendday" => 0,
+            "dstendweek" => 5,
+            "dstendhour" => 2,
+            "dstendminute" => 0,
+            "dstendsecond" => 0,
+            "dstendmillis" => 0,
+            "stdbias" => 0,
+            "tznamedst" => "",
+            "dststartyear" => 0,
+            "dststartmonth" => 3,
+            "dststartday" => 0,
+            "dststartweek" => 5,
+            "dststarthour" => 1,
+            "dststartminute" => 0,
+            "dststartsecond" => 0,
+            "dststartmillis" => 0,
+            "dstbias" => -60
+    );
+
         return $tz;
     }
 
@@ -1636,8 +1652,8 @@ class MAPIProvider {
      * @return array
      */
     private function getTZFromSyncBlob($data) {
-        $tz = unpack(   "lbias/a64name/vdstendyear/vdstendmonth/vdstendday/vdstendweek/vdstendhour/vdstendminute/vdstendsecond/vdstendmillis/" .
-                        "lstdbias/a64name/vdststartyear/vdststartmonth/vdststartday/vdststartweek/vdststarthour/vdststartminute/vdststartsecond/vdststartmillis/" .
+        $tz = unpack(   "lbias/a64tzname/vdstendyear/vdstendmonth/vdstendday/vdstendweek/vdstendhour/vdstendminute/vdstendsecond/vdstendmillis/" .
+                        "lstdbias/a64tznamedst/vdststartyear/vdststartmonth/vdststartday/vdststartweek/vdststarthour/vdststartminute/vdststartsecond/vdststartmillis/" .
                         "ldstbias", $data);
 
         // Make the structure compatible with class.recurrence.php
@@ -1656,9 +1672,13 @@ class MAPIProvider {
      * @return string
      */
     private function getSyncBlobFromTZ($tz) {
+        // set the correct TZ name (done using the Bias)
+        if (!isset($tz["tzname"]) || !$tz["tzname"] || !isset($tz["tznamedst"]) || !$tz["tznamedst"])
+            $tz = TimezoneUtil::FillTZNames($tz);
+
         $packed = pack("la64vvvvvvvv" . "la64vvvvvvvv" . "l",
-                $tz["bias"], "", 0, $tz["dstendmonth"], $tz["dstendday"], $tz["dstendweek"], $tz["dstendhour"], $tz["dstendminute"], $tz["dstendsecond"], $tz["dstendmillis"],
-                $tz["stdbias"], "", 0, $tz["dststartmonth"], $tz["dststartday"], $tz["dststartweek"], $tz["dststarthour"], $tz["dststartminute"], $tz["dststartsecond"], $tz["dststartmillis"],
+                $tz["bias"], $tz["tzname"], 0, $tz["dstendmonth"], $tz["dstendday"], $tz["dstendweek"], $tz["dstendhour"], $tz["dstendminute"], $tz["dstendsecond"], $tz["dstendmillis"],
+                $tz["stdbias"], $tz["tznamedst"], 0, $tz["dststartmonth"], $tz["dststartday"], $tz["dststartweek"], $tz["dststarthour"], $tz["dststartminute"], $tz["dststartsecond"], $tz["dststartmillis"],
                 $tz["dstbias"]);
 
         return $packed;
