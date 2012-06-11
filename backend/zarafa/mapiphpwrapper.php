@@ -58,7 +58,7 @@ class PHPWrapper {
     private $importer;
     private $mapiprovider;
     private $store;
-    private $truncation;
+    private $contentparameters;
 
 
     /**
@@ -80,16 +80,14 @@ class PHPWrapper {
     /**
      * Configures additional parameters used for content synchronization
      *
-     * // TODO this might be refactored into an own class, as more options will be necessary
-     * @param string        $mclass
-     * @param int           $restrict       FilterType
-     * @param int           $truncation     bytes
+     * @param ContentParameters         $contentparameters
      *
      * @access public
      * @return boolean
+     * @throws StatusException
      */
-    public function ConfigContentParameters($mclass, $restrict, $truncation) {
-        $this->truncation = $truncation;
+    public function ConfigContentParameters($contentparameters) {
+        $this->contentparameters = $contentparameters;
     }
 
     /**
@@ -118,7 +116,25 @@ class PHPWrapper {
             return SYNC_E_IGNORE;
 
         $mapimessage = mapi_msgstore_openentry($this->store, $entryid);
-        $message = $this->mapiprovider->GetMessage($mapimessage, $this->truncation);
+        try {
+            $message = $this->mapiprovider->GetMessage($mapimessage, $this->contentparameters);
+        }
+        catch (SyncObjectBrokenException $mbe) {
+            $brokenSO = $mbe->GetSyncObject();
+            if (!$brokenSO) {
+                ZLog::Write(LOGLEVEL_ERROR, sprintf("PHPWrapper->ImportMessageChange(): Catched SyncObjectBrokenException but broken SyncObject available"));
+            }
+            else {
+                if (!isset($brokenSO->id)) {
+                    $brokenSO->id = "Unknown ID";
+                    ZLog::Write(LOGLEVEL_ERROR, sprintf("PHPWrapper->ImportMessageChange(): Catched SyncObjectBrokenException but no ID of object set"));
+                }
+                ZPush::GetDeviceManager()->AnnounceIgnoredMessage(false, $brokenSO->id, $brokenSO);
+            }
+            // tell MAPI to ignore the message
+            return SYNC_E_IGNORE;
+        }
+
 
         // substitute the MAPI SYNC_NEW_MESSAGE flag by a z-push proprietary flag
         if ($flags == SYNC_NEW_MESSAGE) $message->flags = SYNC_NEWMESSAGE;
@@ -183,6 +199,11 @@ class PHPWrapper {
         $entryid = mapi_msgstore_entryidfromsourcekey($this->store, $sourcekey);
         $mapifolder = mapi_msgstore_openentry($this->store, $entryid);
         $folder = $this->mapiprovider->GetFolder($mapifolder);
+
+        // do not import folder if there is something "wrong" with it
+        if ($folder === false)
+            return 0;
+
         $this->importer->ImportFolderChange($folder);
         return 0;
     }

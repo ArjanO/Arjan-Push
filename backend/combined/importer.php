@@ -65,19 +65,19 @@ class ImportChangesCombined implements IImportChanges {
      * Loads objects which are expected to be exported with the state
      * Before importing/saving the actual message from the mobile, a conflict detection should be done
      *
-     * @param string        $mclass         class of objects
-     * @param int           $restrict       FilterType
-     * @param string        $state
+     * @param ContentParameters         $contentparameters         class of objects
+     * @param string                    $state
      *
      * @access public
      * @return boolean
+     * @throws StatusException
      */
-    public function LoadConflicts($mclass, $filtertype, $state) {
+    public function LoadConflicts($contentparameters, $state) {
         if (!$this->icc) {
             ZLog::Write(LOGLEVEL_ERROR, "ImportChangesCombined->LoadConflicts() icc not configured");
             return false;
         }
-        $this->icc->LoadConflicts($mclass, $filtertype, $state);
+        $this->icc->LoadConflicts($contentparameters, $state);
     }
 
     /**
@@ -263,7 +263,7 @@ class ImportChangesCombined implements IImportChanges {
      */
     public function Config($state, $flags = 0) {
         ZLog::Write(LOGLEVEL_DEBUG, 'ImportChangesCombined->Config(...)');
-        $this->syncstates = unserialize($state);
+        $this->syncstates = $state;
         if(!is_array($this->syncstates))
             $this->syncstates = array();
         ZLog::Write(LOGLEVEL_DEBUG, 'ImportChangesCombined->Config() success');
@@ -276,7 +276,7 @@ class ImportChangesCombined implements IImportChanges {
      * @return string
      */
     public function GetState() {
-        return serialize($this->syncstates);
+        return $this->syncstates;
     }
 }
 
@@ -322,13 +322,8 @@ class ImportHierarchyChangesCombinedWrap {
             $folder->parentid = $this->backendid.$this->backend->config['delimiter'].$folder->parentid;
         }
         if(isset($this->backend->config['folderbackend'][$folder->type]) && $this->backend->config['folderbackend'][$folder->type] != $this->backendid){
-            if(in_array($folder->type, array(SYNC_FOLDER_TYPE_INBOX, SYNC_FOLDER_TYPE_DRAFTS, SYNC_FOLDER_TYPE_WASTEBASKET, SYNC_FOLDER_TYPE_SENTMAIL, SYNC_FOLDER_TYPE_OUTBOX))){
-                ZLog::Write(LOGLEVEL_DEBUG, sprintf("converting folder type to other: '%s' ('%s')", $folder->displayname, $folder->serverid));
-                $folder->type = SYNC_FOLDER_TYPE_OTHER;
-            }else{
-                ZLog::Write(LOGLEVEL_DEBUG, sprintf("not ussing folder: '%s' ('%s')", $folder->displayname, $folder->serverid));
-                return true;
-            }
+            ZLog::Write(LOGLEVEL_DEBUG, sprintf("not ussing folder: '%s' ('%s')", $folder->displayname, $folder->serverid));
+            return true;
         }
         ZLog::Write(LOGLEVEL_DEBUG, "ImportHierarchyChangesCombinedWrap->ImportFolderChange() success");
         return $this->ihc->ImportFolderChange($folder);

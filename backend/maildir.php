@@ -53,9 +53,9 @@
 * Consult LICENSE file for details
 ************************************************/
 
-include_once('diffbackend.php');
-include_once('mimeDecode.php');
-
+include_once('lib/default/diffbackend/diffbackend.php');
+include_once('include/mimeDecode.php');
+require_once('include/z_RFC822.php');
 
 class BackendMaildir extends BackendDiff {
     /**----------------------------------------------------------------------------------------------------------
@@ -93,16 +93,13 @@ class BackendMaildir extends BackendDiff {
      * Sends an e-mail
      * Not implemented here
      *
-     * @param string        $rfc822     raw mail submitted by the mobile
-     * @param string        $forward    id of the message to be attached below $rfc822
-     * @param string        $reply      id of the message to be attached below $rfc822
-     * @param string        $parent     id of the folder containing $forward or $reply
-     * @param boolean       $saveInSent indicates if the mail should be saved in the Sent folder
+     * @param SyncSendMail  $sm     SyncSendMail object
      *
      * @access public
      * @return boolean
+     * @throws StatusException
      */
-    public function SendMail($rfc822, $forward = false, $reply = false, $parent = false, $saveInSent = true) {
+    public function SendMail($sm) {
         return false;
     }
 
@@ -117,7 +114,7 @@ class BackendMaildir extends BackendDiff {
     }
 
     /**
-     * Returns the content of the named attachment. The passed attachment identifier is
+     * Returns the content of the named attachment as stream. The passed attachment identifier is
      * the exact string that is returned in the 'AttName' property of an SyncAttachment.
      * Any information necessary to find the attachment must be encoded in that 'attname' property.
      * Data is written directly (with print $data;)
@@ -125,19 +122,28 @@ class BackendMaildir extends BackendDiff {
      * @param string        $attname
      *
      * @access public
-     * @return boolean
+     * @return SyncItemOperationsAttachment
+     * @throws StatusException
      */
     public function GetAttachmentData($attname) {
         list($id, $part) = explode(":", $attname);
 
         $fn = $this->findMessage($id);
+        if ($fn == false)
+            throw new StatusException(sprintf("BackendMaildir->GetAttachmentData('%s'): Error, requested message/attachment can not be found", $attname), SYNC_ITEMOPERATIONSSTATUS_INVALIDATT);
 
         // Parse e-mail
         $rfc822 = file_get_contents($this->getPath() . "/$fn");
 
         $message = Mail_mimeDecode::decode(array('decode_headers' => true, 'decode_bodies' => true, 'include_bodies' => true, 'input' => $rfc822, 'crlf' => "\n", 'charset' => 'utf-8'));
-        print $message->parts[$part]->body;
-        return true;
+
+        include_once('include/stringstreamwrapper.php');
+        $attachment = new SyncItemOperationsAttachment();
+        $attachment->data = StringStreamWrapper::Open($message->parts[$part]->body);
+        if (isset($message->parts[$part]->ctype_primary) && isset($message->parts[$part]->ctype_secondary))
+            $attachment->contenttype = $message->parts[$part]->ctype_primary .'/'.$message->parts[$part]->ctype_secondary;
+
+        return $attachment;
     }
 
     /**----------------------------------------------------------------------------------------------------------
@@ -234,10 +240,26 @@ class BackendMaildir extends BackendDiff {
      * @param int           $type           folder type
      *
      * @access public
-     * @return boolean      status
+     * @return boolean                      status
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
      *
      */
     public function ChangeFolder($folderid, $oldid, $displayname, $type){
+        return false;
+    }
+
+    /**
+     * Deletes a folder
+     *
+     * @param string        $id
+     * @param string        $parent         is normally false
+     *
+     * @access public
+     * @return boolean                      status - false if e.g. does not exist
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
+     *
+     */
+    public function DeleteFolder($id, $parentid){
         return false;
     }
 
@@ -248,7 +270,7 @@ class BackendMaildir extends BackendDiff {
      * @param long          $cutoffdate     timestamp in the past from which on messages should be returned
      *
      * @access public
-     * @return array        of messages
+     * @return array/false  array with messages or false if folder is not available
      */
     public function GetMessageList($folderid, $cutoffdate) {
         $this->moveNewToCur();
@@ -312,13 +334,12 @@ class BackendMaildir extends BackendDiff {
     /**
      * Returns the actual SyncXXX object type.
      *
-     * @param string        $folderid       id of the parent folder
-     * @param string        $id             id of the message
-     * @param int           $truncsize      truncation size in bytes
-     * @param int           $mimesupport    output the mime message
+     * @param string            $folderid           id of the parent folder
+     * @param string            $id                 id of the message
+     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
      *
      * @access public
-     * @return object
+     * @return object/false     false if the message could not be retrieved
      */
     public function GetMessage($folderid, $id, $truncsize, $mimesupport = 0) {
         if($folderid != 'root')
@@ -340,15 +361,56 @@ class BackendMaildir extends BackendDiff {
         $output->bodysize = strlen($output->body);
         $output->bodytruncated = 0; // We don't implement truncation in this backend
         $output->datereceived = $this->parseReceivedDate($message->headers["received"][0]);
-        $output->displayto = $message->headers["to"];
-        $output->importance = $message->headers["x-priority"];
         $output->messageclass = "IPM.Note";
         $output->subject = $message->headers["subject"];
         $output->read = $stat["flags"];
-        $output->to = $message->headers["to"];
-        $output->cc = $message->headers["cc"];
         $output->from = $message->headers["from"];
-        $output->reply_to = isset($message->headers["reply-to"]) ? $message->headers["reply-to"] : null;
+
+        $Mail_RFC822 = new Mail_RFC822();
+        $toaddr = $ccaddr = $replytoaddr = array();
+        if(isset($message->headers["to"]))
+            $toaddr = $Mail_RFC822->parseAddressList($message->headers["to"]);
+        if(isset($message->headers["cc"]))
+            $ccaddr = $Mail_RFC822->parseAddressList($message->headers["cc"]);
+        if(isset($message->headers["reply_to"]))
+            $replytoaddr = $Mail_RFC822->parseAddressList($message->headers["reply_to"]);
+
+        $output->to = array();
+        $output->cc = array();
+        $output->reply_to = array();
+        foreach(array("to" => $toaddr, "cc" => $ccaddr, "reply_to" => $replytoaddr) as $type => $addrlist) {
+            foreach($addrlist as $addr) {
+                $address = $addr->mailbox . "@" . $addr->host;
+                $name = $addr->personal;
+
+                if (!isset($output->displayto) && $name != "")
+                    $output->displayto = $name;
+
+                if($name == "" || $name == $address)
+                    $fulladdr = w2u($address);
+                else {
+                    if (substr($name, 0, 1) != '"' && substr($name, -1) != '"') {
+                        $fulladdr = "\"" . w2u($name) ."\" <" . w2u($address) . ">";
+                    }
+                    else {
+                        $fulladdr = w2u($name) ." <" . w2u($address) . ">";
+                    }
+                }
+
+                array_push($output->$type, $fulladdr);
+            }
+        }
+
+        // convert mime-importance to AS-importance
+        if (isset($message->headers["x-priority"])) {
+            $mimeImportance =  preg_replace("/\D+/", "", $message->headers["x-priority"]);
+            if ($mimeImportance > 3)
+                $output->importance = 0;
+            if ($mimeImportance == 3)
+                $output->importance = 1;
+            if ($mimeImportance < 3)
+                $output->importance = 2;
+        }
 
         // Attachments are only searched in the top-level part
         $n = 0;
@@ -417,7 +479,8 @@ class BackendMaildir extends BackendDiff {
      * @param SyncXXX       $message        the SyncObject containing a message
      *
      * @access public
-     * @return array        same return value as StatMessage()
+     * @return array                        same return value as StatMessage()
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function ChangeMessage($folderid, $id, $message) {
         return false;
@@ -431,7 +494,8 @@ class BackendMaildir extends BackendDiff {
      * @param int           $flags          read flag of the message
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function SetReadFlag($folderid, $id, $flags) {
         if($folderid != 'root')
@@ -468,7 +532,8 @@ class BackendMaildir extends BackendDiff {
      * @param string        $id             id of the message
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function DeleteMessage($folderid, $id) {
         if($folderid != 'root')
@@ -495,7 +560,8 @@ class BackendMaildir extends BackendDiff {
      * @param string        $newfolderid    id of the destination folder
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_MOVEITEMSSTATUS_* exceptions
      */
     public function MoveMessage($folderid, $id, $newfolderid) {
         return false;

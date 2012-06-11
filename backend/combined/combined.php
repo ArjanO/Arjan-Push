@@ -5,6 +5,12 @@
 * Descr     :   Combines several backends. Each type of message
 *               (Emails, Contacts, Calendar, Tasks) can be handled by
 *               a separate backend.
+*               As the CombinedBackend is a subclass of the default Backend
+*               class, it returns by that the supported AS version is 2.5.
+*               The method GetSupportedASVersion() could be implemented
+*               here, checking the version with all backends.
+*               But still, the lowest version in common must be
+*               returned, even if some backends support a higher version.
 *
 * Created   :   29.11.2010
 *
@@ -43,14 +49,18 @@
 * Consult LICENSE file for details
 ************************************************/
 
+// default backend
+include_once('lib/default/backend.php');
+
 //include the CombinedBackend's own config file
-require_once("config.php");
-require_once("importer.php");
-require_once("exporter.php");
+require_once("backend/combined/config.php");
+require_once("backend/combined/importer.php");
+require_once("backend/combined/exporter.php");
 
 class BackendCombined extends Backend {
     public $config;
     public $backends;
+    private $activeBackend;
 
     /**
      * Constructor of the combined backend
@@ -62,6 +72,8 @@ class BackendCombined extends Backend {
         $this->config = BackendCombinedConfig::GetBackendCombinedConfig();
 
         foreach ($this->config['backends'] as $i => $b){
+            // load and instatiate backend
+            ZPush::IncludeBackend($b['name']);
             $this->backends[$i] = new $b['name']($b['config']);
         }
         ZLog::Write(LOGLEVEL_INFO, sprintf("Combined %d backends loaded.", count($this->backends)));
@@ -78,7 +90,6 @@ class BackendCombined extends Backend {
      * @return boolean
      */
     public function Logon($username, $domain, $password) {
-        // TODO check if status exceptions have to be catched
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->Logon('%s', '%s',***))", $username, $domain));
         if(!is_array($this->backends)){
             return false;
@@ -128,7 +139,6 @@ class BackendCombined extends Backend {
      * @return boolean
      */
     public function Setup($store, $checkACLonly = false, $folderid = false) {
-        // TODO check if status exceptions have to be catched
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->Setup('%s', '%s', '%s')", $store, Utils::PrintAsString($checkACLonly), $folderid));
         if(!is_array($this->backends)){
             return false;
@@ -252,22 +262,19 @@ class BackendCombined extends Backend {
     }
 
     /**
-     * Sends an e-mail with the first backend returning true
+     * Sends an e-mail
+     * This messages needs to be saved into the 'sent items' folder
      *
-     * @param string        $rfc822     raw mail submitted by the mobile
-     * @param string        $forward    id of the message to be attached below $rfc822
-     * @param string        $reply      id of the message to be attached below $rfc822
-     * @param string        $parent     id of the folder containing $forward or $reply
-     * @param boolean       $saveInSent indicates if the mail should be saved in the Sent folder
+     * @param SyncSendMail  $sm     SyncSendMail object
      *
      * @access public
      * @return boolean
+     * @throws StatusException
      */
-    public function SendMail($rfc822, $forward = false, $reply = false, $parent = false, $saveInSent = true) {
+    public function SendMail($sm) {
         ZLog::Write(LOGLEVEL_DEBUG, "Combined->SendMail()");
-        if (isset($parent)) $parent = $this->GetBackendFolder($parent);
         foreach ($this->backends as $i => $b){
-            if($this->backends[$i]->SendMail($rfc822, $forward, $reply, $parent, $saveInSent) == true){
+            if($this->backends[$i]->SendMail($sm) == true){
                 return true;
             }
         }
@@ -275,21 +282,22 @@ class BackendCombined extends Backend {
     }
 
     /**
-     * Returns all available data of a single message from the right backend
+     * Returns all available data of a single message
      *
-     * @param string        $folderid
-     * @param string        $id
-     * @param string        $mimesupport flag
+     * @param string            $folderid
+     * @param string            $id
+     * @param ContentParameters $contentparameters flag
      *
      * @access public
      * @return object(SyncObject)
+     * @throws StatusException
      */
-    public function Fetch($folderid, $id, $mimesupport = 0){
-        ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->Fetch('%s', '%s', '%s')", $folderid, $id, $mimesupport));
+    public function Fetch($folderid, $id, $contentparameters) {
+        ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->Fetch('%s', '%s', CPO)", $folderid, $id));
         $backend = $this->GetBackend($folderid);
         if($backend == false)
             return false;
-        return $backend->Fetch($this->GetBackendFolder($folderid), $id, $mimesupport);
+        return $backend->Fetch($this->GetBackendFolder($folderid), $id, $contentparameters);
     }
 
     /**
@@ -302,39 +310,35 @@ class BackendCombined extends Backend {
      */
     function GetWasteBasket(){
         ZLog::Write(LOGLEVEL_DEBUG, "Combined->GetWasteBasket()");
-        if(isset($this->config['folderbackend'][SYNC_FOLDER_TYPE_WASTEBASKET])){
-            $wb = $this->backends[$this->config['folderbackend'][SYNC_FOLDER_TYPE_WASTEBASKET]]->GetWasteBasket();
-            if($wb){
-                return $this->config['folderbackend'][SYNC_FOLDER_TYPE_WASTEBASKET].$this->config['delimiter'].$wb;
-            }
-            return false;
-        }
-        foreach($this->backends as $i => $b){
-            $w = $this->backends[$i]->GetWasteBasket();
-            if($w){
-                return $i.$this->config['delimiter'].$w;
-            }
-        }
+        if (isset($this->activeBackend))
+            return $this->activeBackend->GetWasteBasket();
+
         return false;
     }
 
     /**
-     * Returns the content of the named attachment.
+     * Returns the content of the named attachment as stream.
      * There is no way to tell which backend the attachment is from, so we try them all
      *
      * @param string        $attname
      *
      * @access public
-     * @return boolean
+     * @return SyncItemOperationsAttachment
+     * @throws StatusException
      */
-    public function GetAttachmentData($attname){
+    public function GetAttachmentData($attname) {
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("Combined->GetAttachmentData('%s')", $attname));
-        foreach ($this->backends as $i => $b){
-            if($this->backends[$i]->GetAttachmentData($attname) == true){
-                return true;
+        foreach ($this->backends as $i => $b) {
+            try {
+                $attachment = $this->backends[$i]->GetAttachmentData($attname);
+                if ($attachment instanceof SyncItemOperationsAttachment)
+                    return $attachment;
+            }
+            catch (StatusException $s) {
+                // backends might throw StatusExceptions if it's not their attachment
             }
         }
-        return false;
+        throw new StatusException("Combined->GetAttachmentData(): no backend found", SYNC_ITEMOPERATIONSSTATUS_INVALIDATT);
     }
 
     /**
@@ -343,16 +347,16 @@ class BackendCombined extends Backend {
      * @param string        $requestid      id of the object containing the request
      * @param string        $folderid       id of the parent folder of $requestid
      * @param string        $response
-     * @param string        &$calendarid    reference of the created/updated calendar obj
      *
      * @access public
-     * @return boolean
+     * @return string       id of the created/updated calendar obj
+     * @throws StatusException
      */
-    public function MeetingResponse($requestid, $folderid, $error, &$calendarid) {
+    public function MeetingResponse($requestid, $folderid, $error) {
         $backend = $this->GetBackend($folderid);
         if($backend === false)
             return false;
-        return $backend->MeetingResponse($requestid, $this->GetBackendFolder($folderid), $error, $calendarid);
+        return $backend->MeetingResponse($requestid, $this->GetBackendFolder($folderid), $error);
     }
 
     /**
@@ -370,6 +374,8 @@ class BackendCombined extends Backend {
         $id = substr($folderid, 0, $pos);
         if(!isset($this->backends[$id]))
             return false;
+
+        $this->activeBackend = $this->backends[$id];
         return $this->backends[$id];
     }
 

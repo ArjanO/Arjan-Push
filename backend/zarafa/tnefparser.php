@@ -1,6 +1,6 @@
 <?php
 /***********************************************
-* File      :   z_tnef.php
+* File      :   tnefparser.php
 * Project   :   Z-Push
 * Descr     :   This is tnef implementation for z-push.
 *               It is based on Zarafa's tnef implementation.
@@ -308,11 +308,10 @@ class TNEFParser {
         ZLog::Write(LOGLEVEL_DEBUG, "TNEF: nrprops:$nrprops");
         //loop through all the properties and add them to our internal list
         while($nrprops) {
-            ZLog::Write(LOGLEVEL_DEBUG, "TNEF: \tPROP:$nrprops");
             $hresult = $this->readSingleMapiProp($buffer, $size, $read, $mapiprops);
             if ($hresult !== NOERROR) {
                     ZLog::Write(LOGLEVEL_WARN, "TNEF: There was an error reading a mapi property.");
-                    ZLog::Write(LOGLEVEL_WARN, "TNEF: result: " . sprintf("%x", $hresult));
+                    ZLog::Write(LOGLEVEL_WARN, "TNEF: result: " . sprintf("0x%X", $hresult));
 
                     return $hresult;
             }
@@ -657,7 +656,7 @@ class TNEFParser {
                     //Re-align
                     $buffer = substr($buffer, ($len & 3 ? 4 - ($len & 3) : 0));
                     $size -= $len & 3 ? 4 - ($len & 3) : 0;
-                    ZLog::Write(LOGLEVEL_DEBUG, "TNEF: propvalue:".$mapiprops[$propTag]);
+                    if (isset($mapiprops[$propTag])) ZLog::Write(LOGLEVEL_DEBUG, "TNEF: propvalue:".$mapiprops[$propTag]);
                     break;
 
                 case PT_OBJECT:        // PST sends PT_OBJECT data. Treat as PT_BINARY

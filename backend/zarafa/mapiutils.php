@@ -271,6 +271,7 @@ class MAPIUtils {
             define('STORE_SUPPORTS_UNICODE', true);
             //setlocale to UTF-8 in order to support properties containing Unicode characters
             setlocale(LC_CTYPE, "en_US.UTF-8");
+            define('STORE_INTERNET_CPID', INTERNET_CPID_UTF8);
         }
     }
 
@@ -326,6 +327,55 @@ class MAPIUtils {
 
         ZLog::Write(LOGLEVEL_DEBUG, sprintf("Utils::StoreAttachment: Attachment '%s' with %d bytes saved", $filename, strlen($part->body)));
         return mapi_savechanges($attach);
+    }
+
+    /**
+     * Returns the MAPI PR_CONTAINER_CLASS string for an ActiveSync Foldertype
+     *
+     * @param int       $foldertype
+     *
+     * @access public
+     * @return string
+     */
+    public static function GetContainerClassFromFolderType($foldertype) {
+        switch ($foldertype) {
+            case SYNC_FOLDER_TYPE_TASK:
+            case SYNC_FOLDER_TYPE_USER_TASK:
+                return "IPF.Task";
+                break;
+
+            case SYNC_FOLDER_TYPE_APPOINTMENT:
+            case SYNC_FOLDER_TYPE_USER_APPOINTMENT:
+                return "IPF.Appointment";
+                break;
+
+            case SYNC_FOLDER_TYPE_CONTACT:
+            case SYNC_FOLDER_TYPE_USER_CONTACT:
+                return "IPF.Contact";
+                break;
+
+            case SYNC_FOLDER_TYPE_NOTE:
+            case SYNC_FOLDER_TYPE_USER_NOTE:
+                return "IPF.StickyNote";
+                break;
+
+            case SYNC_FOLDER_TYPE_JOURNAL:
+            case SYNC_FOLDER_TYPE_USER_JOURNAL:
+                return "IPF.Journal";
+                break;
+
+            case SYNC_FOLDER_TYPE_INBOX:
+            case SYNC_FOLDER_TYPE_DRAFTS:
+            case SYNC_FOLDER_TYPE_WASTEBASKET:
+            case SYNC_FOLDER_TYPE_SENTMAIL:
+            case SYNC_FOLDER_TYPE_OUTBOX:
+            case SYNC_FOLDER_TYPE_USER_MAIL:
+            case SYNC_FOLDER_TYPE_OTHER:
+            case SYNC_FOLDER_TYPE_UNKNOWN:
+            default:
+                return "IPF.Note";
+                break;
+        }
     }
 
 }

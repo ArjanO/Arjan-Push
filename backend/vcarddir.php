@@ -40,9 +40,9 @@
 *
 * Consult LICENSE file for details
 ************************************************/
-include_once('diffbackend.php');
+include_once('lib/default/diffbackend/diffbackend.php');
 
-class BackendVCDir extends BackendDiff {
+class BackendVCardDir extends BackendDiff {
     /**----------------------------------------------------------------------------------------------------------
      * default backend methods
      */
@@ -78,16 +78,13 @@ class BackendVCDir extends BackendDiff {
      * Sends an e-mail
      * Not implemented here
      *
-     * @param string        $rfc822     raw mail submitted by the mobile
-     * @param string        $forward    id of the message to be attached below $rfc822
-     * @param string        $reply      id of the message to be attached below $rfc822
-     * @param string        $parent     id of the folder containing $forward or $reply
-     * @param boolean       $saveInSent indicates if the mail should be saved in the Sent folder
+     * @param SyncSendMail  $sm     SyncSendMail object
      *
      * @access public
      * @return boolean
+     * @throws StatusException
      */
-    public function SendMail($rfc822, $forward = false, $reply = false, $parent = false, $saveInSent = true) {
+    public function SendMail($sm) {
         return false;
     }
 
@@ -102,13 +99,14 @@ class BackendVCDir extends BackendDiff {
     }
 
     /**
-     * Returns the content of the named attachment
+     * Returns the content of the named attachment as stream
      * not implemented
      *
      * @param string        $attname
      *
      * @access public
-     * @return boolean
+     * @return SyncItemOperationsAttachment
+     * @throws StatusException
      */
     public function GetAttachmentData($attname) {
         return false;
@@ -185,10 +183,26 @@ class BackendVCDir extends BackendDiff {
      * @param int           $type           folder type
      *
      * @access public
-     * @return boolean      status
+     * @return boolean                      status
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
      *
      */
     public function ChangeFolder($folderid, $oldid, $displayname, $type){
+        return false;
+    }
+
+    /**
+     * Deletes a folder
+     *
+     * @param string        $id
+     * @param string        $parent         is normally false
+     *
+     * @access public
+     * @return boolean                      status - false if e.g. does not exist
+     * @throws StatusException              could throw specific SYNC_FSSTATUS_* exceptions
+     *
+     */
+    public function DeleteFolder($id, $parentid){
         return false;
     }
 
@@ -199,7 +213,7 @@ class BackendVCDir extends BackendDiff {
      * @param long          $cutoffdate     timestamp in the past from which on messages should be returned
      *
      * @access public
-     * @return array        of messages
+     * @return array/false  array with messages or false if folder is not available
      */
     public function GetMessageList($folderid, $cutoffdate) {
         ZLog::Write(LOGLEVEL_DEBUG, 'VCDir::GetMessageList('.$folderid.')');
@@ -228,15 +242,14 @@ class BackendVCDir extends BackendDiff {
     /**
      * Returns the actual SyncXXX object type.
      *
-     * @param string        $folderid       id of the parent folder
-     * @param string        $id             id of the message
-     * @param int           $truncsize      truncation size in bytes
-     * @param int           $mimesupport    output the mime message
+     * @param string            $folderid           id of the parent folder
+     * @param string            $id                 id of the message
+     * @param ContentParameters $contentparameters  parameters of the requested message (truncation, mimesupport etc)
      *
      * @access public
-     * @return object
+     * @return object/false     false if the message could not be retrieved
      */
-    public function GetMessage($folderid, $id, $truncsize, $mimesupport = 0) {
+    public function GetMessage($folderid, $id, $contentparameters) {
         ZLog::Write(LOGLEVEL_DEBUG, 'VCDir::GetMessage('.$folderid.', '.$id.', ..)');
         if($folderid != "root")
             return;
@@ -483,7 +496,8 @@ class BackendVCDir extends BackendDiff {
      * @param SyncXXX       $message        the SyncObject containing a message
      *
      * @access public
-     * @return array        same return value as StatMessage()
+     * @return array                        same return value as StatMessage()
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function ChangeMessage($folderid, $id, $message) {
         ZLog::Write(LOGLEVEL_DEBUG, 'VCDir::ChangeMessage('.$folderid.', '.$id.', ..)');
@@ -513,7 +527,7 @@ class BackendVCDir extends BackendDiff {
         $data = "BEGIN:VCARD\nVERSION:2.1\nPRODID:Z-Push\n";
         foreach($mapping as $k => $v){
             $val = '';
-            $ks = split(';', $k);
+            $ks = explode(';', $k);
             foreach($ks as $i){
                 if(!empty($message->$i))
                     $val .= $this->escape($message->$i);
@@ -570,7 +584,8 @@ class BackendVCDir extends BackendDiff {
      * @param int           $flags          read flag of the message
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function SetReadFlag($folderid, $id, $flags) {
         return false;
@@ -583,7 +598,8 @@ class BackendVCDir extends BackendDiff {
      * @param string        $id             id of the message
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_STATUS_* exceptions
      */
     public function DeleteMessage($folderid, $id) {
         return unlink($this->getPath() . '/' . $id);
@@ -598,7 +614,8 @@ class BackendVCDir extends BackendDiff {
      * @param string        $newfolderid    id of the destination folder
      *
      * @access public
-     * @return boolean      status of the operation
+     * @return boolean                      status of the operation
+     * @throws StatusException              could throw specific SYNC_MOVEITEMSSTATUS_* exceptions
      */
     public function MoveMessage($folderid, $id, $newfolderid) {
         return false;

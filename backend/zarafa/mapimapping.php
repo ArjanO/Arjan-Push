@@ -183,6 +183,7 @@ class MAPIMapping {
             // "cc"
             // "threadtopic"        => PR_CONVERSATION_TOPIC,
             "internetcpid"          => PR_INTERNET_CPID,
+            "nativebodytype"        => PR_NATIVE_BODY_INFO,
             );
     }
 
@@ -202,6 +203,11 @@ class MAPIMapping {
             "representingentryid"   => PR_SENT_REPRESENTING_ENTRYID,
             "sourcekey"             => PR_SOURCE_KEY,
             "entryid"               => PR_ENTRYID,
+            "body"                  => PR_BODY,
+            "rtfcompressed"         => PR_RTF_COMPRESSED,
+            "html"                  => PR_HTML,
+            "rtfinsync"             => PR_RTF_IN_SYNC,
+            "processed"             => PR_PROCESSED,
         );
     }
 
@@ -291,13 +297,11 @@ class MAPIMapping {
             "endtime"               => "PT_SYSTIME:PSETID_Appointment:0x820e",
             "location"              => "PT_STRING8:PSETID_Appointment:0x8208",
             "meetingstatus"         => "PT_LONG:PSETID_Appointment:0x8217",
-            // "organizeremail"     => PR_SENT_REPRESENTING_EMAIL,
-            // "organizername"      => PR_SENT_REPRESENTING_NAME,
-            "reminder"              => "PT_LONG:PSETID_Common:0x8501",
             "sensitivity"           => PR_SENSITIVITY,
             "subject"               => PR_SUBJECT,
             "starttime"             => "PT_SYSTIME:PSETID_Appointment:0x820d",
             "uid"                   => "PT_BINARY:PSETID_Meeting:0x3",
+            "nativebodytype"        => PR_NATIVE_BODY_INFO,
             );
     }
 
@@ -335,7 +339,12 @@ class MAPIMapping {
             "mrwassent"             => "PT_BOOLEAN:PSETID_Appointment:0x8229",
             "endtime"               => "PT_SYSTIME:PSETID_Appointment:0x820e",//this is here for calendar restriction, tnef and ical
             "starttime"             => "PT_SYSTIME:PSETID_Appointment:0x820d",//this is here for calendar restriction, tnef and ical
-            "clipstart"             => "PT_SYSTIME:PSETID_Appointment:0x8235" //ical only
+            "clipstart"             => "PT_SYSTIME:PSETID_Appointment:0x8235", //ical only
+            "recurrencetype"        => "PT_LONG:PSETID_Appointment:0x8231",
+            "body"                  => PR_BODY,
+            "rtfcompressed"         => PR_RTF_COMPRESSED,
+            "html"                  => PR_HTML,
+            "rtfinsync"             => PR_RTF_IN_SYNC,
         );
     }
 
@@ -383,6 +392,123 @@ class MAPIMapping {
             "completion"            => "PT_DOUBLE:PSETID_Task:0x8102",
             "status"                => "PT_LONG:PSETID_Task:0x8101",
             "icon"                  => PR_ICON_INDEX,
+        );
+    }
+
+
+    /**
+    * Returns the MAPI to AS mapping for email todo flags
+    *
+    * @return array
+    */
+    public static function GetMailFlagsMapping() {
+        return array (
+            "flagstatus"            => PR_FLAG_STATUS,
+            "flagtype"              => "PT_STRING8:PSETID_Common:0x8530",
+            "datecompleted"         => "PT_SYSTIME:PSETID_Common:0x810F",
+            "completetime"          => PR_FLAG_COMPLETE_TIME,
+            "startdate"             => "PT_SYSTIME:PSETID_Task:0x8104",
+            "duedate"               => "PT_SYSTIME:PSETID_Task:0x8105",
+            "utcstartdate"          => "PT_SYSTIME:PSETID_Common:0x8516",
+            "utcduedate"            => "PT_SYSTIME:PSETID_Common:0x8517",
+            "reminderset"           => "PT_BOOLEAN:PSETID_Common:0x8503",
+            "remindertime"          => "PT_SYSTIME:PSETID_Common:0x8502",
+            "ordinaldate"           => "PT_SYSTIME:PSETID_Common:0x85A0",
+            "subordinaldate"        => "PT_STRING8:PSETID_Common:0x85A1",
+
+        );
+    }
+
+
+    /**
+    * Returns email todo flags' specific MAPI properties
+    *
+    * @access public
+    *
+    * @return array
+    */
+    public static function GetMailFlagsProperties() {
+        return array(
+            "todoitemsflags"        => PR_TODO_ITEM_FLAGS,
+            "todotitle"             => "PT_STRING8:PSETID_Common:0x85A4",
+            "flagicon"              => PR_FLAG_ICON,
+            "replyrequested"        => PR_REPLY_REQUESTED,
+            "responserequested"     => PR_RESPONSE_REQUESTED,
+            "status"                => "PT_LONG:PSETID_Task:0x8101",
+            "completion"            => "PT_DOUBLE:PSETID_Task:0x8102",
+            "complete"              => "PT_BOOLEAN:PSETID_Task:0x811C",
+        );
+    }
+
+
+    /**
+    * Returns the MAPI to AS mapping for notes
+    *
+    * @access public
+    *
+    * @return array
+    */
+    public static function GetNoteMapping() {
+        return array(
+            "categories"            => "PT_MV_STRING8:PS_PUBLIC_STRINGS:Keywords",
+            "lastmodificationtime"  => PR_LAST_MODIFICATION_TIME,
+            "messageclass"          => PR_MESSAGE_CLASS,
+            "subject"               => PR_SUBJECT,
+        );
+    }
+
+
+    /**
+    * Returns note specific MAPI properties
+    *
+    * @access public
+    *
+    * @return array
+    */
+    public static function GetNoteProperties() {
+        return array(
+            "body"                  => PR_BODY,
+            "messageclass"          => PR_MESSAGE_CLASS,
+        );
+    }
+
+
+    /**
+    * Returns properties for sending an email
+    *
+    * @access public
+    *
+    * @return array
+    */
+    public static function GetSendMailProperties() {
+        return array(
+                "outboxentryid"         => PR_IPM_OUTBOX_ENTRYID,
+                "ipmsentmailentryid"    => PR_IPM_SENTMAIL_ENTRYID,
+                "sentmailentryid"       => PR_SENTMAIL_ENTRYID,
+                "subject"               => PR_SUBJECT,
+                "messageclass"          => PR_MESSAGE_CLASS,
+                "deliverytime"          => PR_MESSAGE_DELIVERY_TIME,
+                "importance"            => PR_IMPORTANCE,
+                "priority"              => PR_PRIORITY,
+                "addrtype"              => PR_ADDRTYPE,
+                "emailaddress"          => PR_EMAIL_ADDRESS,
+                "displayname"           => PR_DISPLAY_NAME,
+                "recipienttype"         => PR_RECIPIENT_TYPE,
+                "entryid"               => PR_ENTRYID,
+                "iconindex"             => PR_ICON_INDEX,
+                "body"                  => PR_BODY,
+                "html"                  => PR_HTML,
+                "sentrepresentingname"  => PR_SENT_REPRESENTING_NAME,
+                "sentrepresentingemail" => PR_SENT_REPRESENTING_EMAIL_ADDRESS,
+                "representingentryid"   => PR_SENT_REPRESENTING_ENTRYID,
+                "sentrepresentingaddt"  => PR_SENT_REPRESENTING_ADDRTYPE,
+                "sentrepresentinsrchk"  => PR_SENT_REPRESENTING_SEARCH_KEY,
+                "displayto"             => PR_DISPLAY_TO,
+                "displaycc"             => PR_DISPLAY_CC,
+                "clientsubmittime"      => PR_CLIENT_SUBMIT_TIME,
+                "attachnum"             => PR_ATTACH_NUM,
+                "attachdatabin"         => PR_ATTACH_DATA_BIN,
+                "internetcpid"          => PR_INTERNET_CPID,
         );
     }
 }
