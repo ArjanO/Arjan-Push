@@ -592,13 +592,8 @@ class Sync extends RequestProcessor {
                     }
                 }
                 catch (StatusException $stex) {
-                    if ($stex->getCode() == SyncCollections::OBSOLETE_CONNECTION) {
-                        $status = SYNC_COMMONSTATUS_SYNCSTATEVERSIONINVALID;
-                    }
-                    else {
-                        $status = SYNC_STATUS_FOLDERHIERARCHYCHANGED;
-                        self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
-                    }
+                   $status = SYNC_STATUS_FOLDERHIERARCHYCHANGED;
+                   self::$topCollector->AnnounceInformation(sprintf("StatusException code: %d", $status), true);
                 }
 
                 // in case of an empty sync with no changes, we can reply with an empty response
