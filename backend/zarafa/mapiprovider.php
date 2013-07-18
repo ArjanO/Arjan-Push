@@ -627,25 +627,23 @@ class MAPIProvider {
 
         foreach($rows as $row) {
             if(isset($row[PR_ATTACH_NUM])) {
+                if (Request::GetProtocolVersion() >= 12.0) {
+                    $attach = new SyncBaseAttachment();
+                }
+                else {
+                    $attach = new SyncAttachment();
+                }
+
                 $mapiattach = mapi_message_openattach($mapimessage, $row[PR_ATTACH_NUM]);
+                $attachprops = mapi_getprops($mapiattach, array(PR_ATTACH_LONG_FILENAME, PR_ATTACH_FILENAME, PR_ATTACHMENT_HIDDEN, PR_ATTACH_CONTENT_ID, PR_ATTACH_CONTENT_ID_W, PR_ATTACH_MIME_TAG, PR_ATTACH_MIME_TAG_W));
                 if ((isset($attachprops[PR_ATTACH_MIME_TAG]) && strpos(strtolower($attachprops[PR_ATTACH_MIME_TAG]), 'signed') !== false) ||
                     (isset($attachprops[PR_ATTACH_MIME_TAG_W]) && strpos(strtolower($attachprops[PR_ATTACH_MIME_TAG_W]), 'signed') !== false)) {
                     continue;
                 }
 
-                $attachprops = mapi_getprops($mapiattach, array(PR_ATTACH_LONG_FILENAME, PR_ATTACH_FILENAME, PR_ATTACHMENT_HIDDEN, PR_ATTACH_CONTENT_ID, PR_ATTACH_CONTENT_ID_W, PR_ATTACH_MIME_TAG, PR_ATTACH_MIME_TAG_W));
-
                 $stream = mapi_openpropertytostream($mapiattach, PR_ATTACH_DATA_BIN);
                 if($stream) {
                     $stat = mapi_stream_stat($stream);
-
-                    if (Request::GetProtocolVersion() >= 12.0) {
-                        $attach = new SyncBaseAttachment();
-                    }
-                    else {
-                        $attach = new SyncAttachment();
-                    }
-
                     // the displayname is handled equal for all AS versions
                     $attach->displayname = w2u((isset($attachprops[PR_ATTACH_LONG_FILENAME])) ? $attachprops[PR_ATTACH_LONG_FILENAME] : ((isset($attachprops[PR_ATTACH_FILENAME])) ? $attachprops[PR_ATTACH_FILENAME] : "attachment.bin"));
 
