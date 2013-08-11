@@ -41,6 +41,7 @@
  * - Removed logging the password as a base64 string.
  * - Removed Content-Transfer-Encoding base64. 
  * - Removed php mail support.
+ * - Added support for sending email to multiple recipients (including cc and bcc).
  */
 
 class SendEmail{
@@ -287,9 +288,11 @@ class SendEmail{
    * @param string $subject subject as one line of text (no line breaks).
    * @param string $body the body of your e-mail.
    * @param string $headers=null any custom headers or null to use the default
+   * @param string $cc=null send carbon copy to e-mail address.
+   * @param string $bcc=null send blind carbon copy.
    * @return bool true/false true on success and false on failure
    */
-  function mail($to=null, $subject=null, $body=null, $headers=null)
+  function mail($to=null, $subject=null, $body=null, $headers=null, $cc=null, $bcc=null)
   {
     if( $to == null || $subject == null || $body == null ) return false;	//Do not send empty mails
     $this->srv_ret = array( 'last' => '', 'all' => "\n", 'full' => "\n"); //Always start with a fresh return array
@@ -299,8 +302,16 @@ class SendEmail{
       $headers =& $this->headers;
 
     $logto = $to; //store for logging
-    
-    $ret =  $this->smtp_mail($to, $subject, $body, $headers);
+
+    if($cc != null && is_array($to) !== true ) {
+      $cc = array($cc); //turn $to into an array.
+    }
+
+    if($bcc != null && is_array($bcc) !== true ) {
+      $bcc = array($bcc); //turn $bcc into an array.
+    }
+
+    $ret =  $this->smtp_mail($to, $subject, $body, $headers, $cc, $bcc);
 
     //log what was just done
     $logfull = "FROM: $this->sender_email\n";
@@ -500,9 +511,11 @@ class SendEmail{
    * @param string &$subject the subject of the e-mail
    * @param string &$body the main text of the message
    * @param string &$headers the e-mail headers
+   * @param string &$cc Cc: e-mail adres 
+   * @param string &$bcc Bcc: e-mail adres
    * @return bool true/false check srv_ret[] on error
    */
-  private function smtp_mail(&$to, &$subject, &$body, &$headers)
+  private function smtp_mail(&$to, &$subject, &$body, &$headers, &$cc, &$bcc)
   {
     $smtp_ret='';
     $server_type = '';
@@ -557,13 +570,8 @@ class SendEmail{
     //authenticate with the server
     if( $this->smtp_auth($socket) === false ) return false;
 
-	//now send the e-mail, process multiple recipients
-	while(true)
-	{
-    if( is_array($to) === true ){
-      //get next recipient from the array and store in send_to
-      $send_to = array_shift($to);
-    }else $send_to =& $to;
+    $to_header_value = '';
+    $cc_header_value = '';
 
     fwrite($socket, 'MAIL FROM:<'.$this->sender_email.'>'."\r\n");
     $ret = $this->server_parse($socket);
@@ -572,12 +580,49 @@ class SendEmail{
     $this->srv_ret['full'] .= "sent: MAIL FROM:<$this->sender_email>\nreceived: ".$this->srv_ret['last']."\n";
     if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected
 
-    fwrite($socket, 'RCPT TO:<'.$send_to.'>'."\r\n");
-    $ret = $this->server_parse($socket);
-    $this->srv_ret['last'] = trim($ret);
-    $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-    $this->srv_ret['full'] .= "sent: RCPT TO:<$send_to>\nreceived: ".$this->srv_ret['last']."\n";
-    if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected
+    // TO
+    for ($i = 0; $i < count($to); $i++) {
+      if ($to_header_value != '') {
+        $to_header_value .= ', ';
+      }
+      $to_header_value .= $to[$i];
+
+      fwrite($socket, 'RCPT TO:<' . $to[$i] . '>'."\r\n");
+      $ret = $this->server_parse($socket);
+      $this->srv_ret['last'] = trim($ret);
+      $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
+      $this->srv_ret['full'] .= "sent: RCPT TO:<" . $to[$i] . ">\nreceived: ".$this->srv_ret['last']."\n";
+      if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected
+    }
+
+    // CC
+    if ($cc != null) {
+      for ($i = 0; $i < count($cc); $i++) {
+        if ($cc_header_value != '') {
+          $cc_header_value .= ', ';
+        }
+        $cc_header_value .= $cc[$i];
+
+        fwrite($socket, 'RCPT TO:<' . $cc[$i] . '>'."\r\n");
+        $ret = $this->server_parse($socket);
+        $this->srv_ret['last'] = trim($ret);
+        $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
+        $this->srv_ret['full'] .= "sent: RCPT TO:<" . $cc[$i] . ">\nreceived: ".$this->srv_ret['last']."\n";
+        if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected 
+      }
+    }
+
+    // BCC, don't add a BCC header!
+    if ($bcc != null) {
+      for ($i = 0; $i < count($bcc); $i++) {
+        fwrite($socket, 'RCPT TO:<' . $bcc[$i] . '>'."\r\n");
+        $ret = $this->server_parse($socket);
+        $this->srv_ret['last'] = trim($ret);
+        $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
+        $this->srv_ret['full'] .= "sent: RCPT TO:<" . $bcc[$i] . ">\nreceived: ".$this->srv_ret['last']."\n";
+        if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected 
+      }
+    }
 
     fwrite($socket, 'DATA'."\r\n");
     $ret = $this->server_parse($socket);
@@ -586,16 +631,24 @@ class SendEmail{
     $this->srv_ret['full'] .= "sent: DATA\nreceived: ".$this->srv_ret['last']."\n";
     if( $this->expected_return($ret, '354') !== true ) {return false;} //Stop the operation if the server does not respond as expected
 
-    fwrite($socket, "FROM:$this->sender_name <$this->sender_email>\r\nSubject: $subject\r\nTO: $send_to\r\n$headers\r\n\r\n$body\r\n");
+    // Build header.
+    $smtp_headers .= 'From: ' . $this->sender_name . '<' . $this->sender_email . '>';
+    $smtp_headers .= "\r\n" . 'Subject: ' . $subject;
+    $smtp_headers .= "\r\n" . 'To: ' . $to_header_value;
+    if (trim($cc_header_value) != '') {
+      $smtp_headers .= "\r\n" . 'Cc: ' . $cc_header_value;
+    }
+    if (trim($headers) != '') {
+      $smtp_headers .= "\r\n" . $headers;
+    }
+
+    fwrite($socket, $smtp_headers . "\r\n\r\n" . $body . "\r\n");
     fwrite($socket, ".\r\n"); //end the transmission of the email
     $ret = $this->server_parse($socket);
     $this->srv_ret['last'] = trim($ret);
     $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-    $this->srv_ret['full'] .= "sent: FROM:$this->sender_name <$this->sender_email>\r\nSubject: $subject\r\nTO: $send_to\r\n$headers\r\n\r\n$body\r\n\nreceived: ".$this->srv_ret['last']."\n";
+    $this->srv_ret['full'] .= 'sent: ' . $smtp_headers . '\r\n\r\n' . $body . '\nreceived: ' . $this->srv_ret['last']."\n";
     if( $this->expected_return($ret, '250') !== true ) {return false;} //Stop the operation if the server does not respond as expected
-
-    if( is_array($to) !== true || count($to) === 0 ) break; //not an array or all done. who cares, just get out!
-	}
 
     //should improve the speed sending the buggers
     fwrite($socket, 'QUIT'."\r\n");
