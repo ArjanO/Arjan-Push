@@ -36,6 +36,11 @@
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * Changes by ArjanO:
+ * - Removed logging the password as a base64 string.
+ */
+
 class SendEmail{
   const SLEEP_SOCKET = 2000;  //socket delay in microseconds. default 2000
                               //Your CPU usage may spike if this value is too low!
@@ -492,7 +497,7 @@ class SendEmail{
         $ret = $this->server_parse($socket);
         $this->srv_ret['last'] = trim($ret);
         $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-        $this->srv_ret['full'] .= "sent: AUTH PLAIN ".base64_encode("\0".$this->user."\0".$this->pw)."\nreceived: ".$this->srv_ret['last']."\n";
+        $this->srv_ret['full'] .= "sent: AUTH PLAIN " . "************" . "\nreceived: ".$this->srv_ret['last']."\n";
         if( $this->expected_return($ret, '334') !== true && $this->expected_return($ret, '235') !== true ) {return false;} //Stop the operation if the server does not respond as expected
       }elseif( strstr($this->server_ehlo['auth'], 'CRAM-MD5') ) { //CRAM-MD5
         fwrite($socket, 'AUTH CRAM-MD5'."\r\n");
@@ -530,7 +535,7 @@ class SendEmail{
         $ret = $this->server_parse($socket);
         $this->srv_ret['last'] = trim($ret);
         $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-        $this->srv_ret['full'] .= "sent base64 password:".base64_encode($this->pw)."\nreceived: ".$this->srv_ret['last']."\n";
+        $this->srv_ret['full'] .= "sent base64 password:" . "************" . "\nreceived: ".$this->srv_ret['last']."\n";
         if( $this->expected_return($ret, '334') !== true && $this->expected_return($ret, '235') !== true ) {return false;} //Stop the operation if the server does not respond as expected
      }else{
        $this->srv_ret['full'] .= "ERROR: class_email.php is unable to find a supported authentication method. Please contact support!\nreceived: ".$this->srv_ret['last']."\n";
