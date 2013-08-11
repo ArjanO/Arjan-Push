@@ -46,6 +46,7 @@
 include_once('lib/default/diffbackend/diffbackend.php');
 include_once('include/mimeDecode.php');
 require_once('include/z_RFC822.php');
+require_once('include/SendEmail.php');
 
 
 class BackendIMAP extends BackendDiff {
@@ -55,6 +56,7 @@ class BackendIMAP extends BackendDiff {
     protected $mbox;
     protected $mboxFolder;
     protected $username;
+    private $password;
     protected $domain;
     protected $serverdelimiter;
     protected $sinkfolders;
@@ -99,6 +101,7 @@ class BackendIMAP extends BackendDiff {
         if ($this->mbox) {
             ZLog::Write(LOGLEVEL_DEBUG, sprintf("BackendIMAP->Logon(): User '%s' is authenticated on IMAP",$username));
             $this->username = $username;
+            $this->password = $password;
             $this->domain = $domain;
             // set serverdelimiter
             $this->serverdelimiter = $this->getServerDelimiter();
@@ -172,16 +175,19 @@ class BackendIMAP extends BackendDiff {
         $message = $mobj->decode(array('decode_headers' => false, 'decode_bodies' => true, 'include_bodies' => true, 'charset' => 'utf-8'));
 
         $Mail_RFC822 = new Mail_RFC822();
-        $toaddr = $ccaddr = $bccaddr = "";
+        $toaddr = array();
+        $ccaddr = array();
+        $bccaddr = array();
         if(isset($message->headers["to"]))
-            $toaddr = $this->parseAddr($Mail_RFC822->parseAddressList($message->headers["to"]));
+            $toaddr = $Mail_RFC822->parseAddressList($message->headers["to"]);
         if(isset($message->headers["cc"]))
-            $ccaddr = $this->parseAddr($Mail_RFC822->parseAddressList($message->headers["cc"]));
+            $ccaddr = $Mail_RFC822->parseAddressList($message->headers["cc"]);
         if(isset($message->headers["bcc"]))
-            $bccaddr = $this->parseAddr($Mail_RFC822->parseAddressList($message->headers["bcc"]));
+            $bccaddr = $Mail_RFC822->parseAddressList($message->headers["bcc"]);
 
         // save some headers when forwarding mails (content type & transfer-encoding)
         $headers = "";
+        $headersArray = array();
         $forward_h_ct = "";
         $forward_h_cte = "";
         $envelopefrom = "";
@@ -256,6 +262,7 @@ class BackendIMAP extends BackendDiff {
             // all other headers stay
             if ($headers) $headers .= "\n";
             $headers .= ucfirst($k) . ": ". $v;
+            $headersArray[ucfirst($k)] = $v;
         }
 
         // set "From" header if not set on the device
@@ -265,6 +272,7 @@ class BackendIMAP extends BackendDiff {
             else $v = $this->username . IMAP_DEFAULTFROM;
             if ($headers) $headers .= "\n";
             $headers .= 'From: '.$v;
+            $headersArray['From'] = $v;
             $envelopefrom = "-f$v";
         }
 
@@ -275,6 +283,7 @@ class BackendIMAP extends BackendDiff {
             else $v = $this->username . IMAP_DEFAULTFROM;
             if ($headers) $headers .= "\n";
             $headers .= 'Return-Path: '.$v;
+            $headersArray['Return-Path'] = $v;
         }
 
         // if this is a multipart message with a boundary, we must use the original body
@@ -381,6 +390,7 @@ class BackendIMAP extends BackendDiff {
                         $att_boundary = strtoupper(md5(uniqid(time())));
                         // add boundary headers
                         $headers .= "\n" . "Content-Type: multipart/mixed; boundary=$att_boundary";
+                        $headersArray['Content-Type'] = 'multipart/mixed; boundary=$att_boundary';
                         $multipartmixed = true;
                     }
 
@@ -462,11 +472,78 @@ class BackendIMAP extends BackendDiff {
         /* END fmbiete's contribution r1528, ZP-320 */
         ZLog::Write(LOGLEVEL_DEBUG, "BackendIMAP->SendMail(): body: $body");
 
-        if (!defined('IMAP_USE_IMAPMAIL') || IMAP_USE_IMAPMAIL == true) {
+        if (!defined('SEND_MAIL_METHOD') || SEND_MAIL_METHOD == 'imap_mail') {
+            $toaddr = $this->parseAddr($toaddr);
+            $ccaddr = $this->parseAddr($ccaddr);
+            $bccaddr = $this->parseAddr($bccaddr);
+
             // changed by mku ZP-330
             $send =  @imap_mail ( $toaddr, $message->headers["subject"], $body, $headers, $ccaddr, $bccaddr);
-        }
-        else {
+        } elseif (SEND_MAIL_METHOD == 'smtp') {
+            if (!defined('SMTP_HOST') || SMTP_HOST == '') {
+                throw new StatusException(sprintf("BackendIMAP->SendMail(): SMTP: SMTP_HOST missing."), 
+                    SYNC_COMMONSTATUS_MAILSUBMISSIONFAILED);
+            } elseif (!defined('SMTP_PORT') || SMTP_PORT == '') {
+                throw new StatusException(sprintf("BackendIMAP->SendMail(): SMTP: SMTP_PORT missing."), 
+                    SYNC_COMMONSTATUS_MAILSUBMISSIONFAILED);
+            }
+
+            $smtp = new SendEmail();
+            $smtp->set_server(SMTP_HOST, SMTP_PORT);
+
+            if (defined('SMTP_CRYPTO')) {
+                $smtp->set_crypto(SMTP_CRYPTO);
+            } else {
+                $smtp->set_crypto('none');
+            }
+
+            if (defined('SMTP_AUTH') && SMTP_AUTH === true) {
+                $smtp->set_auth($this->username, $this->password);
+            }
+
+            $from_name = '';
+            $from_email = '';
+            $smtp_headers = "";
+
+            foreach ($headersArray as $k => $value) {
+                $key = strtolower($k);
+
+                if ($key == "subject")
+                    continue; // Remove subject header.
+
+                if ($key == "from") {
+                    if (preg_match("/^([^<>\\n\\r]{0,} |)<([^<>]{0,})>$/", $value, $matches, PREG_OFFSET_CAPTURE)) {
+                        $from_name = $matches[1][0];
+                        $from_email = $matches[2][0];
+                    } elseif (strpos($value, '@') !== false) { // Assume that the email address is correct.
+                        $from_email = $value;
+                    }
+                } else {
+                    if ($smtp_headers) {
+                        $smtp_headers .= "\n";  
+                    }
+                    $smtp_headers .= $k . ": ". $value;
+                }
+            }
+
+            $smtp->set_sender($from_name, $from_email);
+
+            if($smtp->mail($this->parseAddrArray($toaddr), $message->headers["subject"], $body, $smtp_headers, 
+                $this->parseAddrArray($ccaddr), $this->parseAddrArray($bccaddr)) == true) {
+                $send = true;
+            } else {
+                throw new StatusException(sprintf("BackendIMAP->SendMail(): The email could not be sent. SMTP-log: %s", 
+                    $smtp->srv_ret['full']), SYNC_COMMONSTATUS_MAILSUBMISSIONFAILED);
+            }
+
+            $toaddr = $this->parseAddr($toaddr);
+            $ccaddr = $this->parseAddr($ccaddr);
+            $bccaddr = $this->parseAddr($bccaddr);
+        } else {
+            $toaddr = $this->parseAddr($toaddr);
+            $ccaddr = $this->parseAddr($ccaddr);
+            $bccaddr = $this->parseAddr($bccaddr);
+
             if (!empty($ccaddr))  $headers .= "\nCc: $ccaddr";
             if (!empty($bccaddr)) $headers .= "\nBcc: $bccaddr";
             // changed by mku ZP-330
@@ -1732,6 +1809,24 @@ class BackendIMAP extends BackendDiff {
             }
         }
         return $addr_string;
+    }
+
+    /**
+     * Parses an mimedecode address to a simple array.
+     *
+     * @param array         $ad             addresses array
+     *
+     * @access protected
+     * @return array       mail address(es) string
+     */
+    protected function parseAddrArray($ad) {
+        $addr_array = array();
+        if (isset($ad) && is_array($ad)) {
+            foreach($ad as $addr) {
+                $addr_array[] = $addr->mailbox . "@" . $addr->host;
+            }
+        }
+        return $addr_array;
     }
 
     /**
