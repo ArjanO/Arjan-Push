@@ -40,6 +40,7 @@
  * Changes by ArjanO:
  * - Removed logging the password as a base64 string.
  * - Removed Content-Transfer-Encoding base64. 
+ * - Removed php mail support.
  */
 
 class SendEmail{
@@ -48,7 +49,6 @@ class SendEmail{
                               // Increase this for slow connections or
                               // decrease to around 100 for *low* latency connections.
   public  $srv_ret;
-  private $type;
   private $sender_email;
   private $sender_name;
   private $server;
@@ -87,7 +87,6 @@ class SendEmail{
     $this->user = null;
     $this->pw = null;
     $this->server_ehlo = array();
-    $this->type = 1; // 1= custom smtp() class THIS CLASS  0= PHP mail()
     $this->hostname = php_uname('n'); //best guess, some server may require a valid rdns name
     $this->content_type = 'text/plain'; //html e-mails are evil!
     $this->crypto = 'starttls'; //this should be fine for most servers
@@ -259,15 +258,6 @@ class SendEmail{
   }
 
   /**
-   * specify which e-mail function to use
-   * @param int $type 0 = PHP mail() function, 1 = SMTP function of this class
-   */
-  function set_type( $type=1 )
-  {
-    $this->type = ($type === 0) ? 0 : 1;
-  }
-
-  /**
    * html or plain text message for the default header?
    * *notice* run set_headers(null) after setting this
    * @param string $type='text/plain' text/html or text/plain
@@ -309,11 +299,8 @@ class SendEmail{
       $headers =& $this->headers;
 
     $logto = $to; //store for logging
-    if($this->type === 0 ){
-      $ret = $this->php_mail($to, $subject, $body, $headers);
-    }else{
-      $ret =  $this->smtp_mail($to, $subject, $body, $headers);
-    }
+    
+    $ret =  $this->smtp_mail($to, $subject, $body, $headers);
 
     //log what was just done
     $logfull = "FROM: $this->sender_email\n";
@@ -334,43 +321,6 @@ class SendEmail{
     $this->log( $logsendto, $logfull, $ret);
 
     return $ret;
-  }
-
-  /**
-   * this one takes care of sending the message through the internal PHP mail()
-   * function.
-   * @param string &$to To: e-mail address
-   * @param string &$subject the subject of the e-mail
-   * @param string &$body the main text of the message
-   * @param string &$headers=null the e-mail headers
-   * @return bool true/false check srv_ret[] on error
-   */
-  private function php_mail(&$to, &$subject, &$body, &$headers)
-  {
-    $tmpheader = 'From:'.$this->sender_email."\r\n"
-                .'Reply-To:'.$this->sender_email. "\r\n"
-                .$headers;
-
-    if( is_array($to) !== true ){
-      //get next recipient from the array and store in send_to
-      $send_to = array($to); //turn $to into an array for foreach
-    }else $send_to =& $to;
-
-    foreach( $send_to as $sto )
-    {
-      if( @mail($sto, $subject, $body, $tmpheader) == True ){
-        $this->srv_ret['last'] = "notice: e-mail for $sto has been delivered using the PHP mail() function.\n";
-        $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-        $this->srv_ret['full'] .= $this->srv_ret['last']."\n";
-        return true;
-      }else {
-        $err = error_get_last();
-        $this->srv_ret['last'] = "ERROR: The E-mail was not sent using the PHP mail() function, please check your configuration\n".$err['message'];
-        $this->srv_ret['all'] .= $this->srv_ret['last']."\n";
-        $this->srv_ret['full'] .= $this->srv_ret['last']."\n";
-        return false;
-      }
-    }
   }
 
   /**
