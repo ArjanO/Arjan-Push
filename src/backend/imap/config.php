@@ -66,13 +66,38 @@ define('IMAP_SENTFOLDER', '');
 // forward messages inline (default false - as attachment)
 define('IMAP_INLINE_FORWARD', false);
 
-// use imap_mail() to send emails (default) - if false mail() is used
-define('IMAP_USE_IMAPMAIL', true);
-
 /* BEGIN fmbiete's contribution r1527, ZP-319 */
 // list of folders we want to exclude from sync. Names, or part of it, separated by |
 // example: dovecot.sieve|archive|spam
 define('IMAP_EXCLUDED_FOLDERS', '');
 /* END fmbiete's contribution r1527, ZP-319 */
+
+// Define e-mail send method. Replacement for the IMAP_USE_IMAPMAIL setting.
+// options:
+//  imap_mail        : use imap_mail() to send emails (default).
+//  mail             : use PHP mail().
+//  smtp             : use class_email to send e-mails.
+define('SEND_MAIL_METHOD', 'imap_mail');
+
+// ************************
+//  SMTP settings
+// ************************
+
+// Defines the SMTP server to which we want to connect.
+define('SMTP_HOST', 'localhost');
+
+// Connecting to default port (25, for ssl the default port is 465).
+define('SMTP_PORT', 25);
+
+// Crypto type for the connection.
+// options:
+//  '' or 'none'     : none crypto is used.
+//  'ssl'            : ssl connection.
+//  'tsl'            : tls connection.
+//  'starttls'       : use tls if available.
+define('SMTP_CRYPTO', '');
+
+// Use the IMAP username and password to authenticate with the SMTP server.
+define('SMTP_AUTH', false);
 
 ?>
