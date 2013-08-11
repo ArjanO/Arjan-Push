@@ -39,6 +39,7 @@
 /*
  * Changes by ArjanO:
  * - Removed logging the password as a base64 string.
+ * - Removed Content-Transfer-Encoding base64. 
  */
 
 class SendEmail{
@@ -189,7 +190,6 @@ class SendEmail{
       //load default headers
       $this->headers = "MIME-Version: 1.0\r\n"
                   ."Content-type: $this->content_type; charset=UTF-8; format=flowed\r\n"
-                  ."Content-Transfer-Encoding: base64\r\n"
                   ."X-Mailer: class_email.php";
     }else{
       if( $append === false )
@@ -255,7 +255,7 @@ class SendEmail{
     if( $email == '' ) $email = 'user@localhost.local';
     if( $name == '' ) $name = $email;
     $this->sender_email = $email;
-    $this->sender_name = '=?UTF-8?B?'.base64_encode($name).'?=';
+    $this->sender_name = $name;
   }
 
   /**
@@ -294,8 +294,8 @@ class SendEmail{
    * this function prepares the subject and passes the e-mail
    * to the correct mail function.
    * @param string $to send to e-mail address in form user@domain.com
-   * @param string $subject subject as one line of text (no line breaks). will be base64 encoded
-   * @param string $body the body of your e-mail. will be base64 encoded
+   * @param string $subject subject as one line of text (no line breaks).
+   * @param string $body the body of your e-mail.
    * @param string $headers=null any custom headers or null to use the default
    * @return bool true/false true on success and false on failure
    */
@@ -303,11 +303,6 @@ class SendEmail{
   {
     if( $to == null || $subject == null || $body == null ) return false;	//Do not send empty mails
     $this->srv_ret = array( 'last' => '', 'all' => "\n", 'full' => "\n"); //Always start with a fresh return array
-
-    //base64 encode the subject and sender
-    $subject = '=?UTF-8?B?'.base64_encode($subject).'?=';
-    $body = base64_encode($body); //no need for =?UTF... here
-
 
     //set header if it is null
     if( $headers === null )
